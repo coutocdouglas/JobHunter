@@ -8,6 +8,9 @@ const UA = 'JobHunter/0.1 (busca pessoal de vagas; github.com/coutocdouglas/JobH
 const MIN_INTERVAL_MS = 6 * 60 * 60 * 1000; // respeita as APIs gratuitas: no máximo 1 consulta a cada 6 h por fonte
 const MAX_DESC = 4000;
 
+// Como as vagas de ArchViz aparecem anunciadas no Brasil.
+const BR_TERMS = ['artista 3d', 'visualizador 3d', 'perspectivista', 'maquetista eletrônico', 'renderizador', 'arquiteto 3d', 'generalista 3d', 'visualização arquitetônica'];
+
 function base(source, o) {
   return {
     source,
@@ -100,12 +103,32 @@ function normalizeWorkable(json, slug) {
   );
 }
 
-function normalizeAdzuna(json) {
+/**
+ * Gupy (EXPERIMENTAL): usa a busca pública do portal de vagas, que não é uma API oficial
+ * e pode mudar sem aviso. Campos lidos com tolerância a ausências.
+ */
+function normalizeGupy(json) {
+  const list = Array.isArray(json && json.data) ? json.data : [];
+  return list.map((j) => {
+    const wt = String(j.workplaceType || '').toLowerCase();
+    const remote = j.isRemoteWork === true || wt === 'remote' ? true : wt === 'on-site' || wt === 'onsite' || wt === 'hybrid' ? false : undefined;
+    let location = [j.city, j.state, j.country].filter(Boolean).join(', ');
+    if (!location) location = remote ? 'Remoto' : '';
+    if (!/brasil|brazil/i.test(location)) location = location ? `${location} (Brasil)` : 'Brasil';
+    return base('Gupy', {
+      title: j.name, company: j.careerPageName, location, remote,
+      url: j.jobUrl || (j.careerPageUrl && j.id ? `${String(j.careerPageUrl).replace(/\/$/, '')}/jobs/${j.id}` : ''),
+      posted: j.publishedDate, description: j.description,
+    });
+  });
+}
+
+function normalizeAdzuna(json, country = 'br') {
   return (json.results || []).map((j) =>
     base('Adzuna', {
       title: j.title,
       company: j.company && j.company.display_name,
-      location: j.location && j.location.display_name,
+      location: [j.location && j.location.display_name, country === 'br' ? 'Brasil' : ''].filter(Boolean).join(', '),
       url: j.redirect_url,
       posted: j.created,
       description: j.description,
@@ -147,13 +170,23 @@ function buildTasks(config, fetchImpl) {
   for (const slug of c.lever || []) tasks.push({ key: `lever:${slug}`, label: `Lever ${slug}`, run: async () => normalizeLever(await getJson(fetchImpl, `https://api.lever.co/v0/postings/${encodeURIComponent(slug)}?mode=json`), slug) });
   for (const slug of c.ashby || []) tasks.push({ key: `ashby:${slug}`, label: `Ashby ${slug}`, run: async () => normalizeAshby(await getJson(fetchImpl, `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(slug)}?includeCompensation=true`), slug) });
   for (const slug of c.workable || []) tasks.push({ key: `workable:${slug}`, label: `Workable ${slug}`, run: async () => normalizeWorkable(await getJson(fetchImpl, `https://apply.workable.com/api/v1/widget/accounts/${encodeURIComponent(slug)}?details=true`), slug) });
+  if (config.gupy !== false) {
+    for (const term of BR_TERMS) {
+      tasks.push({
+        key: `gupy:${term}`,
+        label: `Gupy "${term}" (experimental)`,
+        run: async () => normalizeGupy(await getJson(fetchImpl, `https://portal.api.gupy.io/api/job?name=${encodeURIComponent(term)}&offset=0&limit=50`)),
+      });
+    }
+  }
   const a = config.adzuna || {};
   if (a.appId && a.appKey) {
-    for (const what of ['visualizador 3d arquitetura', 'artista 3d archviz']) {
+    const country = a.country || 'br';
+    for (const what of country === 'br' ? BR_TERMS : ['architectural visualization', 'archviz artist', '3d visualizer']) {
       tasks.push({
         key: `adzuna:${what}`,
         label: `Adzuna "${what}"`,
-        run: async () => normalizeAdzuna(await getJson(fetchImpl, `https://api.adzuna.com/v1/api/jobs/${a.country || 'br'}/search/1?app_id=${encodeURIComponent(a.appId)}&app_key=${encodeURIComponent(a.appKey)}&results_per_page=30&what=${encodeURIComponent(what)}`)),
+        run: async () => normalizeAdzuna(await getJson(fetchImpl, `https://api.adzuna.com/v1/api/jobs/${country}/search/1?app_id=${encodeURIComponent(a.appId)}&app_key=${encodeURIComponent(a.appKey)}&results_per_page=50&what=${encodeURIComponent(what)}`), country),
       });
     }
   }
@@ -196,5 +229,5 @@ async function runAll(config, { fetchImpl = fetch, lastFetch = {}, force = false
 module.exports = {
   runAll, buildTasks, finalize, MIN_INTERVAL_MS,
   normalizeWeWorkRemotely, normalizeRemotive, normalizeRemoteOk, normalizeGreenhouse,
-  normalizeLever, normalizeAshby, normalizeWorkable, normalizeAdzuna,
+  normalizeLever, normalizeAshby, normalizeWorkable, normalizeAdzuna, normalizeGupy, BR_TERMS,
 };

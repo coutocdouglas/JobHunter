@@ -12,7 +12,7 @@ const MY_SKILLS = [
 ];
 
 const ONSITE_RE = /\b(on[- ]?site|onsite|in[- ]office|presencial|hibrido|hybrid|in the office|office[- ]based)\b/;
-const REMOTE_RE = /\b(remote|remoto|home ?office|work from home|wfh|anywhere|worldwide|teletrabalho|100% remot)/;
+const REMOTE_RE = /\b(remote|remoto|remota|home ?office|work from home|wfh|anywhere|worldwide|teletrabalho|trabalho a distancia|100% remot)/;
 const OPEN_REGION_RE = /\b(worldwide|anywhere|global|latam|latin america|south america|americas|brazil|brasil|international)\b/;
 const RESTRICTED_RE = [
   /\b(us|usa|u\.s\.a?\.?|united states)\b[\s,-]*(only|based|residents?|citizens?|authorized)/,
@@ -29,7 +29,7 @@ function detectRemote(...texts) {
   const t = norm(texts.filter(Boolean).join(' \n '));
   const remote = REMOTE_RE.test(t);
   const onsite = ONSITE_RE.test(t);
-  if (remote && /\b(fully|100%|totally) remote\b/.test(t)) return true;
+  if (remote && /\b(fully|100%|totally) remote\b|100% (remot|home ?office)|totalmente remot/.test(t)) return true;
   if (remote && onsite) return null; // "remoto ou híbrido": ambíguo
   if (remote) return true;
   if (onsite) return false;

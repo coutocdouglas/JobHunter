@@ -226,6 +226,8 @@ async function renderConfig() {
       cfg.gmailConnected && h('button', { onclick: async () => { await window.jh.gmailDisconnect(); await renderConfig(); } }, 'Desconectar')));
   const ta = (id, label, v) => field(label, h('textarea', { id, rows: 3 }, lines(v)));
   $('f-companies').replaceChildren(ta('c-gh', 'Greenhouse', cfg.companies.greenhouse), ta('c-lever', 'Lever', cfg.companies.lever), ta('c-ashby', 'Ashby', cfg.companies.ashby), ta('c-wk', 'Workable', cfg.companies.workable));
+  $('f-br').replaceChildren(
+    h('label', { class: 'check' }, h('input', { type: 'checkbox', id: 'br-gupy', checked: cfg.gupy !== false }), ' Buscar na Gupy (experimental: usa a busca pública do site, que pode mudar sem aviso)'));
   $('f-adzuna').replaceChildren(field('App ID', text('a-id', cfg.adzuna.appId)), field('App Key', text('a-key', cfg.adzuna.appKey, { type: 'password', autocomplete: 'off' })));
 }
 const split = (id) => $(id).value.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
@@ -238,6 +240,7 @@ async function save() {
     googleClientSecret: secret || undefined,
     companies: { greenhouse: split('c-gh'), lever: split('c-lever'), ashby: split('c-ashby'), workable: split('c-wk') },
     adzuna: { appId: $('a-id').value.trim(), appKey: $('a-key').value.trim() },
+    gupy: $('br-gupy').checked,
   });
   $('saved').textContent = 'Salvo.';
   setTimeout(() => { $('saved').textContent = ''; }, 2500);

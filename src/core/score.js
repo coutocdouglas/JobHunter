@@ -2,10 +2,15 @@
 const { norm } = require('./text');
 const { detectRemote, regionRestriction, matchedSkills, mentions } = require('./detect');
 
-const ARCHVIZ_TITLE = /(arch\s?viz|architectural (visuali[sz]|render|cgi|3d)|visuali[sz]ation (artist|specialist)|visuali[sz]ador|visuali[sz]er|cgi (artist|visuali)|3d (artist|designer|generalist|visuali)|artista 3d|render(ing)? artist|archi?viz)/;
-const BAD_TITLE = /(character|vfx|gameplay|game ?dev|technical artist|animator|animador|rigg|concept artist|environment artist|product visuali|ui\b|ux\b|motion graphics)/;
-const JUNIOR = /(junior|jr\b|intern\b|internship|estagi|trainee|entry[- ]level)/;
-const SENIOR = /(senior|sr\.?\b|lead\b|supervisor|principal|art director|diretor de arte|coordenador|head of)/;
+// Os textos passam por norm(): minúsculas e sem acento ("visualização" vira "visualizacao").
+// Termos brasileiros: perspectivista, maquetista eletrônico, renderizador, visualizador, artista/generalista/designer 3D, arquiteto 3D.
+const BR_ARCHVIZ = /(perspectivista|maquetista eletronic|visualizacao (3d |arquitetonica)|visualizador(a)? 3d|artista 3d.{0,25}arquitet|arquitet\w*.{0,15}(3d|render|visualiza)|imagens? 3d|render(izacao|izador)?.{0,15}(arquitet|imobili))/;
+const STRONG_TITLE = new RegExp(`(arch\\s?viz|architectural (visuali|render|cgi)|archi?viz|${BR_ARCHVIZ.source.slice(1, -1)})`);
+const ARCHVIZ_TITLE = /(arch\s?viz|architectural (visuali[sz]|render|cgi|3d)|visuali[sz]ation (artist|specialist)|visuali[sz]ador|visuali[sz]er|cgi (artist|visuali)|3d (artist|designer|generalist|visuali)|(artista|generalista|designer|modelador|projetista) 3d|perspectivista|maquetista eletronic|renderizador|render(ing)? artist|archi?viz)/;
+const BAD_TITLE = /(character|personage|vfx|gameplay|game ?dev|\bgames?\b|\bjogos?\b|technical artist|animator|animador|rigg|concept artist|environment artist|product visuali|ui\b|ux\b|motion graphics|moveis planejados|marcenaria|joalheria|joias|mecanic|tubulac)/;
+const JUNIOR = /(junior|jr\b|intern\b|internship|estagi|trainee|entry[- ]level|aprendiz)/;
+const SENIOR = /(senior|sr\.?\b|lead\b|lider|supervisor|principal|art director|diretor(a)? de arte|coordenador|head of|especialista)/;
+const ARCH_CONTEXT = /arch|architect|interior|real estate|imobili|arquitet|imove|empreendimento|incorporadora|construtora|interiores/;
 
 /**
  * Aderência de 1 a 5 ao perfil do Douglas, com motivos e avisos em português.
@@ -19,14 +24,14 @@ function scoreJob(job) {
   const warnings = [];
   let pts = 0;
 
-  if (/arch\s?viz|architectural (visuali|render|cgi)|archi?viz/.test(title)) {
+  if (STRONG_TITLE.test(title)) {
     pts += 3;
     reasons.push('Cargo é de visualização arquitetônica');
   } else if (ARCHVIZ_TITLE.test(title)) {
-    pts += 2;
-    reasons.push('Cargo de 3D/visualização');
-    if (!/arch|architect|interior|real estate|imobili/.test(all)) warnings.push('Não cita arquitetura: pode não ser ArchViz');
-  } else if (/arch|architect/.test(title) && /3d|render|visual/.test(all)) {
+    pts += ARCH_CONTEXT.test(all) ? 2.5 : 2;
+    reasons.push(ARCH_CONTEXT.test(all) ? 'Cargo de 3D/visualização ligado a arquitetura ou imobiliário' : 'Cargo de 3D/visualização');
+    if (!ARCH_CONTEXT.test(all)) warnings.push('Não cita arquitetura: pode não ser ArchViz');
+  } else if (/arch|architect|arquitet/.test(title) && /3d|render|visual/.test(all)) {
     pts += 1.5;
     reasons.push('Cargo de arquitetura com 3D');
   } else {
@@ -69,6 +74,10 @@ function scoreJob(job) {
     pts -= 2;
     warnings.push('Vaga de nível júnior/estágio');
   }
+  if (/\b(unreal|unity)\b/.test(title)) {
+    pts -= 1.5;
+    warnings.push('Foco em motor de tempo real (Unreal/Unity), fora do seu fluxo 3ds Max + Corona');
+  }
   if (BAD_TITLE.test(title)) {
     pts -= 2;
     warnings.push('Cargo de outra especialidade (jogos, VFX, personagem…)');
@@ -77,11 +86,15 @@ function scoreJob(job) {
   let bonus = 0;
   if (mentions(all, /art direction|direcao de arte|art director/)) bonus += 0.5;
   if (mentions(all, /anima(tion|cao)|fly ?through|fly ?over|video/)) bonus += 0.25;
-  if (mentions(all, /\b(ai|ia)\b[- ]?(assisted|workflow|tools)|generative|comfyui|stable diffusion|midjourney/)) {
+  if (mentions(all, /\b(ai|ia)\b[- ]?(assisted|workflow|tools)|generative|comfyui|stable diffusion|midjourney|inteligencia artificial|\bia generativa/)) {
     bonus += 0.5;
     reasons.push('Cita fluxo com IA, que está no seu CV');
   }
-  if (mentions(all, /real estate|imobili|residential|high[- ]end/)) bonus += 0.25;
+  if (mentions(all, /real estate|imobili|residential|high[- ]end|alto padrao|lancamento|incorporadora|construtora/)) {
+    bonus += 0.25;
+    if (mentions(all, /imobili|alto padrao|lancamento|incorporadora|construtora/)) reasons.push('Mercado imobiliário, sua especialidade');
+  }
+  if (mentions(all, /\bpj\b|pessoa juridica|cnpj/)) reasons.push('Contratação PJ, que é o seu formato');
   pts += Math.min(bonus, 1);
 
   const fit = pts >= 6 ? 5 : pts >= 4.5 ? 4 : pts >= 3 ? 3 : pts >= 1.5 ? 2 : 1;
@@ -93,7 +106,8 @@ function isCandidate(job) {
   const title = norm(job.title);
   if (ARCHVIZ_TITLE.test(title)) return true;
   const all = `${title} ${norm(job.description || '')}`;
+  if (BR_ARCHVIZ.test(all) && /3d|render|visual|perspectiv|maquet|imagem|imagens/.test(title)) return true;
   return /archviz|arch viz|architectural visuali|corona render|3ds max/.test(all) && /3d|render|visual/.test(title);
 }
 
-module.exports = { scoreJob, isCandidate };
+module.exports = { scoreJob, isCandidate, BR_ARCHVIZ };

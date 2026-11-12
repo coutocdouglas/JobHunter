@@ -6,13 +6,17 @@ Tudo roda no seu computador. Currículos, banco de vagas e credenciais ficam na 
 
 ## O que ele faz
 
-1. **Busca vagas** em fontes que permitem automação: We Work Remotely, Remotive, Remote OK, páginas de carreira de estúdios (Greenhouse, Lever, Ashby, Workable) e, opcionalmente, Adzuna (ajuda no Brasil). Cada fonte é consultada no máximo a cada 6 horas.
+1. **Busca vagas** em fontes que permitem automação: We Work Remotely, Remotive, Remote OK, páginas de carreira de estúdios (Greenhouse, Lever, Ashby, Workable), **Gupy** (experimental) e, opcionalmente, Adzuna. Cada fonte é consultada no máximo a cada 6 horas.
+   - **No Brasil**, as vagas de ArchViz usam outros nomes. A Gupy e o Adzuna pesquisam por *artista 3D, visualizador 3D, perspectivista, maquetista eletrônico, renderizador, arquiteto 3D, generalista 3D e visualização arquitetônica*, e a nota de aderência reconhece esses termos.
+   - A Gupy não tem API oficial: o app usa a busca pública do portal de vagas, que pode mudar sem aviso. Se ela parar de funcionar, a tela mostra o erro e as outras fontes seguem normalmente. Dá para desligar nas Configurações.
 2. **Dá uma nota de aderência de 1 a 5** com regras simples (cargo de ArchViz, 3ds Max/Corona/Photoshop, remoto, restrição de região, senioridade). Mostra os motivos e os avisos de cada nota.
 3. **Mostra o funil**: nova, aplicar, talvez, rascunho, enviada, respondeu, entrevista, descartada.
 4. **Prepara a candidatura**: gera o e-mail em português ou inglês com modelos que só afirmam o que está no seu currículo, e cria o **rascunho** no Gmail com o currículo certo e o portfólio anexos. **O app não envia e-mail**: ele só pede permissão de rascunho e leitura, nunca a de envio. Você revisa e clica em enviar no Gmail.
 5. **LinkedIn sem raspagem**: o LinkedIn não oferece API de vagas e raspar o site viola os termos. O caminho é criar alertas de vagas no LinkedIn (chegam por e-mail) e usar **Importar alertas do LinkedIn**.
 
-Na primeira execução o banco já vem com 15 vagas da varredura manual de 12/11/2026 (`seed/`). Várias delas têm status "não verificada": abra o link antes de candidatar.
+Na primeira execução o banco já vem com as vagas das varreduras manuais de 12/11/2026 (`seed/`), internacionais e brasileiras.
+
+**Alertas do LinkedIn em português:** crie alertas no LinkedIn para "artista 3D", "visualizador 3D" e "perspectivista", com local Brasil e filtro Remoto, e depois use **Importar alertas do LinkedIn**. Várias delas têm status "não verificada": abra o link antes de candidatar.
 
 ## Instalar
 

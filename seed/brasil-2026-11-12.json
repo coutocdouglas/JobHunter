@@ -1,0 +1,179 @@
+[
+  {
+    "title": "Artista 3D - Arquiteto (Remoto)",
+    "company": "R2U | Realidade Aumentada",
+    "location": "Remoto (Brasil)",
+    "remote": true,
+    "url": "https://glassdoor.com.br/Vaga/3d-artist-vagas-SRCH_KO0,9.htm",
+    "source": "Glassdoor / SimplyHired",
+    "posted": "Há 3 dias no SimplyHired (consulta em 12/11/2026)",
+    "salary": "R$ 3.000/mês (PJ)",
+    "email": null,
+    "fit": 3,
+    "reasons": [
+      "Artista 3D de arquitetura, 100% remoto, PJ e rotina flexível",
+      "Projetos para o mercado imobiliário com foco em realismo",
+      "Contratação PJ, que é o seu formato"
+    ],
+    "warnings": [
+      "Valor de R$ 3.000/mês está bem abaixo da sua senioridade",
+      "Pipeline voltado a AR/VR (cena otimizada), não só imagem fotorrealista",
+      "Num post antigo a R2U pedia CV e portfólio em jobs@r2u.io: confirme o canal no anúncio novo"
+    ],
+    "id": "066daf34e2ab9249",
+    "dedupeKey": "r2urealidadeaumentada|artista3darquitetoremoto",
+    "description": "",
+    "curated": true,
+    "cvLang": "pt"
+  },
+  {
+    "title": "Artista 3D Generalista (visualização arquitetônica)",
+    "company": "actium3d",
+    "location": "São Paulo, SP (Brasil) · Home office",
+    "remote": true,
+    "url": "https://bne.com.br/vaga-de-emprego-na-area-arte-e-cultura-em-sao-paulo-sp/artista/5569533",
+    "source": "BNE",
+    "posted": "Data não informada",
+    "salary": "A combinar (efetivo)",
+    "email": null,
+    "fit": 4,
+    "reasons": [
+      "Equipe de visualização arquitetônica, home office",
+      "Modelagem, materiais, iluminação e câmeras no 3ds Max",
+      "Photoshop como diferencial"
+    ],
+    "warnings": [
+      "Contrato efetivo (CLT), não PJ",
+      "Data de publicação não aparece; candidatura pelo BNE"
+    ],
+    "id": "717e0cd101e2243c",
+    "dedupeKey": "actium3d|artista3dgeneralistavisualizacaoarquitetonica",
+    "description": "",
+    "curated": true,
+    "cvLang": "pt"
+  },
+  {
+    "title": "Artista 3D (imagens de empreendimentos imobiliários)",
+    "company": "Empresa não identificada (Glassdoor)",
+    "location": "Brasil (local e remoto não confirmados)",
+    "remote": null,
+    "url": "https://glassdoor.com.br/Vaga/visualizador-3d-vagas-SRCH_KO0,15.htm",
+    "source": "Glassdoor",
+    "posted": "Data não informada",
+    "salary": null,
+    "email": null,
+    "fit": 3,
+    "reasons": [
+      "Imagens 3D realistas de lançamentos imobiliários",
+      "Pede 3ds Max, Corona e pós no Photoshop: exatamente o seu fluxo"
+    ],
+    "warnings": [
+      "Não consegui abrir a página para ver empresa, cidade e regime",
+      "Abra a busca do Glassdoor e procure por \"Artista 3D\""
+    ],
+    "id": "f1dfa97e2231e6eb",
+    "dedupeKey": "empresanaoidentificadaglassdoor|artista3dimagensdeempreendimentosimobiliarios",
+    "description": "",
+    "curated": true,
+    "cvLang": "pt"
+  },
+  {
+    "title": "3D (visualização para festivais, stands e ativações)",
+    "company": "TM1 Brand Experience",
+    "location": "São Paulo, SP (Brasil) · remoto não confirmado",
+    "remote": null,
+    "url": "https://glassdoor.com.br/Vaga/sao-paulo-area-visualiza%C3%A7%C3%A3o-3d-vagas-SRCH_IL.0,14_IM1009_KW15,30.htm",
+    "source": "Glassdoor / Indeed",
+    "posted": "Data não informada",
+    "salary": null,
+    "email": null,
+    "fit": 3,
+    "reasons": [
+      "Render fotorrealista com 3ds Max e V-Ray ou Corona, pós no Photoshop",
+      "Pede formação em arquitetura ou design"
+    ],
+    "warnings": [
+      "Foco em eventos e cenografia, não em imobiliário",
+      "Apareceu numa busca \"home office\" do Glassdoor, mas o texto não confirma remoto"
+    ],
+    "id": "1b8b60de38dca16f",
+    "dedupeKey": "tm1brandexperience|3dvisualizacaoparafestivaisstandseativacoes",
+    "description": "",
+    "curated": true,
+    "cvLang": "pt"
+  },
+  {
+    "title": "Projetista 3D (cenografia e eventos)",
+    "company": "Tour House Viagens e Turismo",
+    "location": "São Paulo, SP (Brasil) · Trabalho remoto",
+    "remote": true,
+    "url": "https://br.indeed.com/q-projetista-3d-vagas.html",
+    "source": "Indeed",
+    "posted": "Data não informada",
+    "salary": null,
+    "email": null,
+    "fit": 3,
+    "reasons": [
+      "Indeed marca trabalho remoto",
+      "Renders realistas (imagem e vídeo) para aprovação"
+    ],
+    "warnings": [
+      "Projetos de cenografia, stands e eventos, não ArchViz imobiliário"
+    ],
+    "id": "1c3aa8c42bff4452",
+    "dedupeKey": "tourhouseviagenseturismo|projetista3dcenografiaeeventos",
+    "description": "",
+    "curated": true,
+    "cvLang": "pt"
+  },
+  {
+    "title": "Arquiteto(a) de Criação (banco de parceiros)",
+    "company": "Fitters Decorafit",
+    "location": "Remoto (Brasil)",
+    "remote": true,
+    "url": "https://br.indeed.com/empregos-de-Vagas-3d",
+    "source": "Indeed",
+    "posted": "Data não informada",
+    "salary": null,
+    "email": null,
+    "fit": 3,
+    "reasons": [
+      "Remoto",
+      "Projetos criativos em 3D e imagens renderizadas a partir de briefing",
+      "Valoriza formação em arquitetura"
+    ],
+    "warnings": [
+      "Cadastro de parceiros: demanda por projeto, sem garantia de volume",
+      "Mais projeto de interiores do que visualização"
+    ],
+    "id": "c119db25d9cc9df7",
+    "dedupeKey": "fittersdecorafit|arquitetoadecriacaobancodeparceiros",
+    "description": "",
+    "curated": true,
+    "cvLang": "pt"
+  },
+  {
+    "title": "Senior 3D Artist [Unreal]",
+    "company": "Netvagas",
+    "location": "Remoto (Brasil)",
+    "remote": true,
+    "url": "https://glassdoor.com.br/Vaga/home-office-3d-artist-vagas-SRCH_FW0,11_KO12,21.htm",
+    "source": "Glassdoor",
+    "posted": "24 h no Glassdoor na época da busca",
+    "salary": null,
+    "email": null,
+    "fit": 2,
+    "reasons": [
+      "Remoto e sênior",
+      "Cita 3ds Max e liderança de outros artistas"
+    ],
+    "warnings": [
+      "Foco em Unreal Engine e animação, fora do seu fluxo principal"
+    ],
+    "id": "353fa9815c67ac7c",
+    "dedupeKey": "netvagas|senior3dartistunreal",
+    "description": "",
+    "curated": true,
+    "cvLang": "pt"
+  }
+]

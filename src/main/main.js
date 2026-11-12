@@ -48,13 +48,16 @@ function getGmail() {
 }
 
 /* ---------- primeira execução: importa as vagas já curadas ---------- */
+/* Carrega cada arquivo de seed/ uma única vez; arquivos novos de versões futuras entram sozinhos. */
 function seedIfNeeded() {
-  if (store.getSetting('seeded')) return;
   const dir = path.join(__dirname, '..', '..', 'seed');
-  for (const f of fs.existsSync(dir) ? fs.readdirSync(dir).filter((x) => x.endsWith('.json')) : []) {
+  const done = new Set(store.getSetting('seededFiles', store.getSetting('seeded') ? ['painel-2026-11-12.json'] : []));
+  for (const f of fs.existsSync(dir) ? fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort() : []) {
+    if (done.has(f)) continue;
     store.upsertJobs(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
+    done.add(f);
   }
-  store.setSetting('seeded', true);
+  store.setSetting('seededFiles', [...done]);
 }
 
 /* Versões antigas guardavam só o caminho dos PDFs; traz esses arquivos para a biblioteca uma única vez. */
