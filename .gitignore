@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+# Dados pessoais nunca entram no repositório
+config.local.json
+*.sqlite
+gmail-token*
+curriculo*
+portfolio*.pdf

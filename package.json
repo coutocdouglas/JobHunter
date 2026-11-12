@@ -1,0 +1,37 @@
+{
+  "name": "jobhunter",
+  "version": "0.1.0",
+  "description": "Caçador de vagas remotas de ArchViz/3D: coleta, pontua a aderência e prepara candidaturas no Gmail.",
+  "main": "src/main/main.js",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "dist": "electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "sql.js": "^1.16.0"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "jsdom": "^31.0.0"
+  },
+  "build": {
+    "appId": "br.com.coutocdouglas.jobhunter",
+    "productName": "JobHunter",
+    "files": [
+      "src/**",
+      "seed/**",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

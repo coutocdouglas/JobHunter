@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JobHunter</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <h1>JobHunter</h1>
+  <nav>
+    <button class="tab on" data-view="vagas">Vagas</button>
+    <button class="tab" data-view="config">Configurações</button>
+  </nav>
+  <div class="spacer"></div>
+  <button id="scan" class="primary">Buscar vagas agora</button>
+  <button id="alerts">Importar alertas do LinkedIn</button>
+</header>
+
+<main id="view-vagas">
+  <div class="stats" id="stats"></div>
+  <div class="bar">
+    <input id="q" type="search" placeholder="Buscar por cargo, empresa, fonte…">
+    <select id="reg"><option value="">Brasil + exterior</option><option>Brasil</option><option>Exterior</option></select>
+    <select id="st"><option value="">Todo o funil</option></select>
+    <select id="fit"><option value="1">Qualquer aderência</option><option value="2">Aderência 2+</option><option value="3" selected>Aderência 3+</option><option value="4">Aderência 4+</option></select>
+  </div>
+  <div id="msg" class="msg" hidden></div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<main id="view-config" hidden>
+  <section>
+    <h2>Seus dados (usados nos e-mails)</h2>
+    <div class="form" id="f-profile"></div>
+  </section>
+  <section>
+    <h2>Arquivos para anexar</h2>
+    <div class="form" id="f-files"></div>
+  </section>
+  <section>
+    <h2>Gmail (só cria rascunhos, nunca envia)</h2>
+    <p class="help">Crie um "ID do cliente OAuth" do tipo <b>App para computador</b> no Google Cloud Console (grátis), ative a Gmail API e cole abaixo. Deixe o app em <b>produção</b> (sem verificação, uso pessoal) para o login não expirar em 7 dias.</p>
+    <div class="form" id="f-google"></div>
+  </section>
+  <section>
+    <h2>Estúdios para monitorar</h2>
+    <p class="help">Um identificador por linha. O identificador é o trecho da URL da página de carreiras: boards.greenhouse.io/<b>xxx</b>, jobs.lever.co/<b>xxx</b>, jobs.ashbyhq.com/<b>xxx</b>, apply.workable.com/<b>xxx</b>.</p>
+    <div class="form" id="f-companies"></div>
+  </section>
+  <section>
+    <h2>Adzuna (opcional, ajuda no Brasil)</h2>
+    <p class="help">Chave gratuita em developer.adzuna.com.</p>
+    <div class="form" id="f-adzuna"></div>
+  </section>
+  <div class="actions"><button id="save" class="primary">Salvar configurações</button><span id="saved" class="help"></span></div>
+</main>
+
+<div id="modal" class="modal" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <h2 id="m-title"></h2>
+    <div class="row"><label>Idioma</label><select id="m-lang"><option value="en">Inglês</option><option value="pt">Português</option></select></div>
+    <div class="row"><label>Para</label><input id="m-to" type="email" placeholder="e-mail de contato da vaga (se houver)"></div>
+    <div class="row"><label>Assunto</label><input id="m-subject"></div>
+    <textarea id="m-body" rows="14"></textarea>
+    <div class="row checks">
+      <label><input type="checkbox" id="m-cv" checked> Anexar currículo <span id="m-cvname" class="help"></span></label>
+      <label><input type="checkbox" id="m-pf" checked> Anexar portfólio <span id="m-pfname" class="help"></span></label>
+    </div>
+    <p id="m-note" class="help"></p>
+    <div class="actions">
+      <button id="m-copy">Copiar texto</button>
+      <button id="m-draft" class="primary">Criar rascunho no Gmail</button>
+      <button id="m-sent">Marcar como enviada</button>
+      <button id="m-close">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
