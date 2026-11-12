@@ -20,7 +20,7 @@ Na primeira execução o banco já vem com as vagas das varreduras manuais de 12
 
 ## Instalar
 
-Baixe o `.exe` mais recente em **Releases**. O instalador não é assinado digitalmente, então o Windows SmartScreen pode avisar: clique em "Mais informações" e "Executar assim mesmo".
+Baixe o instalador pelo link fixo da versão mais recente: https://github.com/coutocdouglas/JobHunter/releases/latest/download/JobHunter-Setup.exe (ou pela página **Releases**). O instalador não é assinado digitalmente, então o Windows SmartScreen pode avisar: clique em "Mais informações" e "Executar assim mesmo".
 
 ## Estúdios (candidatura espontânea)
 

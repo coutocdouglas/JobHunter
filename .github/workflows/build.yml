@@ -40,9 +40,16 @@ jobs:
         with:
           name: JobHunter-instalador
           path: dist/*.exe
+      # Publica o .exe na página de Releases. Com tag, usa a tag; no disparo manual,
+      # cria a tag v<versão do package.json> no próprio GitHub. Se a versão já existe, substitui o .exe.
       - name: Publicar na página de Releases
-        if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.exe --generate-notes
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="$GITHUB_REF_NAME"; else TAG="v$(node -p "require('./package.json').version")"; fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/JobHunter-Setup.exe --clobber
+          else
+            gh release create "$TAG" dist/JobHunter-Setup.exe --target "$GITHUB_SHA" --title "JobHunter $TAG" --generate-notes --latest
+          fi
