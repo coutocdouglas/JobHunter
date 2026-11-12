@@ -104,9 +104,13 @@ function normalizeWorkable(json, slug) {
 }
 
 /**
- * Gupy (EXPERIMENTAL): usa a busca pública do portal de vagas, que não é uma API oficial
- * e pode mudar sem aviso. Campos lidos com tolerância a ausências.
+ * Gupy (EXPERIMENTAL): usa a mesma busca que a página portal.gupy.io/job-search chama.
+ * Não é uma API oficial e pode mudar sem aviso. Formato conferido em 12/11/2026:
+ * { data: [{ id, name, careerPageName, workplaceType: 'remote'|'hybrid'|'on-site', city, state,
+ *   publishedDate, applicationDeadline, jobUrl, description, type }], pagination: { total, limit, offset } }
+ * A busca olha só o título da vaga.
  */
+const GUPY_SEARCH = 'https://portal.gupy.io/api/job-search/jobs';
 function normalizeGupy(json) {
   const list = Array.isArray(json && json.data) ? json.data : [];
   return list.map((j) => {
@@ -171,11 +175,12 @@ function buildTasks(config, fetchImpl) {
   for (const slug of c.ashby || []) tasks.push({ key: `ashby:${slug}`, label: `Ashby ${slug}`, run: async () => normalizeAshby(await getJson(fetchImpl, `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(slug)}?includeCompensation=true`), slug) });
   for (const slug of c.workable || []) tasks.push({ key: `workable:${slug}`, label: `Workable ${slug}`, run: async () => normalizeWorkable(await getJson(fetchImpl, `https://apply.workable.com/api/v1/widget/accounts/${encodeURIComponent(slug)}?details=true`), slug) });
   if (config.gupy !== false) {
-    for (const term of BR_TERMS) {
+    // "3d" e "render" pegam títulos variados; o filtro de ArchViz descarta o que não serve.
+    for (const term of [...BR_TERMS, '3d', 'renderização']) {
       tasks.push({
         key: `gupy:${term}`,
         label: `Gupy "${term}" (experimental)`,
-        run: async () => normalizeGupy(await getJson(fetchImpl, `https://portal.api.gupy.io/api/job?name=${encodeURIComponent(term)}&offset=0&limit=50`)),
+        run: async () => normalizeGupy(await getJson(fetchImpl, `${GUPY_SEARCH}?jobName=${encodeURIComponent(term)}&limit=50&offset=0`)),
       });
     }
   }

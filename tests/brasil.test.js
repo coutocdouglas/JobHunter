@@ -7,7 +7,7 @@ const { detectRemote } = require('../src/core/detect');
 const src = require('../src/core/sources');
 const { pickLang } = require('../src/core/templates');
 
-// Fixtures SINTÉTICOS no formato que o portal da Gupy devolve; o formato real não é documentado oficialmente.
+// Fixtures da Gupy seguem o formato real conferido no portal em 12/11/2026 (valores inventados).
 
 test('termos brasileiros entram no filtro', () => {
   for (const title of ['Perspectivista', 'Maquetista Eletrônico', 'Visualizador 3D', 'Artista 3D - Arquiteto (Remoto)', 'Renderizador 3D', 'Generalista 3D Pleno', 'Arquiteto(a) 3D']) {
@@ -73,9 +73,26 @@ test('normalizeGupy: remoto, local com Brasil e campos ausentes', () => {
   assert.deepEqual(src.normalizeGupy(null), []);
 });
 
-test('Gupy entra na busca com todos os termos brasileiros e pode ser desligada', () => {
-  const on = src.buildTasks({}, fetch).filter((t) => t.key.startsWith('gupy:'));
-  assert.equal(on.length, src.BR_TERMS.length);
+test('Gupy entra na busca com todos os termos brasileiros, usa o endereço real e pode ser desligada', async () => {
+  let called = '';
+  const fake = async (u) => { called = u; return { ok: true, json: async () => ({ data: [] }) }; };
+  const on = src.buildTasks({}, fake).filter((t) => t.key.startsWith('gupy:'));
+  assert.equal(on.length, src.BR_TERMS.length + 2);
+  await on.find((x) => x.key === 'gupy:perspectivista').run();
+  assert.equal(called, 'https://portal.gupy.io/api/job-search/jobs?jobName=perspectivista&limit=50&offset=0');
+  assert.equal(src.buildTasks({ gupy: false }, fake).filter((t) => t.key.startsWith('gupy:')).length, 0);
+});
+
+test('Gupy real: on-site/hybrid não são remotos e cidade vazia vira Brasil', () => {
+  const [a, b] = src.normalizeGupy({ data: [
+    { id: 1, name: 'Arquiteto(a) 3D', careerPageName: 'X', workplaceType: 'remote', city: '', state: '', jobUrl: 'https://x.gupy.io/job/abc?jobBoardSource=gupy_portal', publishedDate: '2026-11-12T20:01:25.944Z' },
+    { id: 2, name: 'Visualizador 3D', careerPageName: 'Y', workplaceType: 'hybrid', city: 'Belo Horizonte', state: 'Minas Gerais', jobUrl: 'https://y.gupy.io/job/def' },
+  ], pagination: { total: 2 } });
+  assert.equal(a.remote, true);
+  assert.equal(a.location, 'Remoto (Brasil)');
+  assert.equal(src.finalize(a).url, 'https://x.gupy.io/job/abc');
+  assert.equal(b.remote, false);
+  assert.equal(b.location, 'Belo Horizonte, Minas Gerais (Brasil)');
   assert.equal(src.buildTasks({ gupy: false }, fetch).filter((t) => t.key.startsWith('gupy:')).length, 0);
 });
 

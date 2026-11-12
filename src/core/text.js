@@ -34,7 +34,7 @@ function canonicalUrl(url) {
     const u = new URL(url);
     u.hash = '';
     for (const k of [...u.searchParams.keys()]) {
-      if (/^(utm_|ref$|refid$|trk|trackingid|source$|gh_src$|lever-source)/i.test(k)) u.searchParams.delete(k);
+      if (/^(utm_|ref$|refid$|trk|trackingid|source$|gh_src$|lever-source|jobboardsource$)/i.test(k)) u.searchParams.delete(k);
     }
     u.hostname = u.hostname.replace(/^www\./, '');
     return u.toString().replace(/\/(\?|$)/, '$1');
