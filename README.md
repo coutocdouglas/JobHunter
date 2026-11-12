@@ -22,6 +22,15 @@ Na primeira execução o banco já vem com as vagas das varreduras manuais de 12
 
 Baixe o `.exe` mais recente em **Releases**. O instalador não é assinado digitalmente, então o Windows SmartScreen pode avisar: clique em "Mais informações" e "Executar assim mesmo".
 
+## Estúdios (candidatura espontânea)
+
+A aba **Estúdios** fica separada das vagas: é a lista de estúdios para abordar diretamente, mesmo sem vaga aberta, com funil próprio (novo, contatar, rascunho, contatado, respondeu, em conversa, sem interesse) e anotações.
+
+- O app vem com 27 estúdios (`seed/estudios/`), do Brasil e do exterior, cada um com a evidência de contratação remota que foi encontrada ou o aviso de que não há.
+- **Preparar abordagem** gera um e-mail de candidatura espontânea (português para estúdios no Brasil, inglês para o resto), com os anexos da aba Documentos, e cria o rascunho no Gmail. **Marcar como contatado** registra a data.
+- Estúdios com página de carreiras no Greenhouse, Lever, Ashby ou Workable são vigiados a cada busca: vaga nova aparece na aba **Vagas**. Em 12/11/2026 eram 6: Utopia, Boldr, Soluis e Visualhouse (Workable), Squint/Opera (Greenhouse) e Higharc (Ashby).
+- Use **Adicionar estúdio** para incluir outros.
+
 ## Documentos (currículo, portfólio, cover letter)
 
 A aba **Documentos** é a biblioteca de onde saem todos os anexos.

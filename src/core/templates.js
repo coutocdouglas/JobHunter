@@ -113,4 +113,61 @@ function buildApplication(job, { lang, profile = {}, attach = { cv: true, portfo
   };
 }
 
-module.exports = { buildApplication, pickLang, DEFAULT_PROFILE, norm };
+/** Idioma da abordagem a um estúdio: português para estúdios no Brasil. */
+function studioLang(studio) {
+  return /brasil|brazil/i.test(studio.country || '') ? 'pt' : 'en';
+}
+
+/**
+ * Candidatura espontânea para um estúdio (sem vaga aberta). Mesmas regras: só afirma o que está no CV.
+ */
+function buildOutreach(studio, { lang, profile = {}, attach = { cv: true, portfolio: true, cover: false } } = {}) {
+  const p = { ...DEFAULT_PROFILE, ...profile };
+  const l = lang || studioLang(studio);
+  const files = attachLine(attach, p, l);
+  const name = studio.name;
+  if (l === 'pt') {
+    return {
+      lang: l,
+      subject: `Artista 3D / ArchViz disponível para colaborar — ${p.name}`,
+      body: [
+        `Olá, equipe ${name},`,
+        '',
+        `Acompanho o trabalho de vocês e gostaria de me colocar à disposição para futuras oportunidades, seja em vaga fixa ou como PJ por projeto. Sou arquiteto e artista 3D, com mais de 9 anos de atuação em visualização arquitetônica para o mercado imobiliário de alto padrão, e conduzo a imagem do conceito à pós-produção em 3ds Max, Corona Renderer e Photoshop.`,
+        '',
+        'Na Casa Digital entrego cerca de 10 projetos por ano para grandes construtoras, cuido da direção de arte e gerencio uma equipe, com foco na qualidade final das entregas. Também uso IA como auxiliar no desenvolvimento da imagem.',
+        '',
+        `${files} Moro em ${p.city.pt}. ${p.availability.pt}`,
+        '',
+        'Se fizer sentido, fico à disposição para conversar.',
+        '',
+        'Atenciosamente,',
+        p.name,
+        p.phone,
+        p.email,
+      ].join('\n'),
+    };
+  }
+  return {
+    lang: l,
+    subject: `ArchViz artist available for remote collaboration — ${p.name}`,
+    body: [
+      `Hello ${name} team,`,
+      '',
+      'I follow your work and would like to put myself forward for future opportunities, either full-time or as a remote contractor on a project basis. I am an architect and 3D artist with over 9 years of experience in architectural visualization for the high-end real estate market, taking images from concept to post-production in 3ds Max, Corona Renderer and Photoshop.',
+      '',
+      'At Casa Digital I deliver about 10 projects a year for major Brazilian construction firms, provide art direction and manage a team, with a focus on the quality of the final deliverables. I also use AI as an assistant in the image development process.',
+      '',
+      `${files} I am based in ${p.city.en} and fluent in English. ${p.availability.en}`,
+      '',
+      'If it makes sense for your team, I would be glad to talk.',
+      '',
+      'Best regards,',
+      p.name,
+      p.phone,
+      p.email,
+    ].join('\n'),
+  };
+}
+
+module.exports = { buildApplication, buildOutreach, studioLang, pickLang, DEFAULT_PROFILE, norm };

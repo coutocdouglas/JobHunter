@@ -12,6 +12,7 @@
   <h1>JobHunter</h1>
   <nav>
     <button class="tab on" data-view="vagas">Vagas</button>
+    <button class="tab" data-view="studios">Estúdios</button>
     <button class="tab" data-view="docs">Documentos</button>
     <button class="tab" data-view="config">Configurações</button>
   </nav>
@@ -30,6 +31,32 @@
   </div>
   <div id="msg" class="msg" hidden></div>
   <div class="grid" id="grid"></div>
+</main>
+
+<main id="view-studios" hidden>
+  <p class="help">Estúdios para abordar diretamente, com candidatura espontânea, mesmo sem vaga aberta. Ficam separados das vagas e têm o próprio funil. Os que têm página de carreiras no Greenhouse, Lever, Ashby ou Workable são vigiados a cada busca: vaga nova aparece na aba Vagas.</p>
+  <div class="stats" id="s-stats"></div>
+  <div class="bar">
+    <input id="s-q" type="search" placeholder="Buscar estúdio, país, anotação…">
+    <select id="s-reg"><option value="">Brasil + exterior</option><option>Brasil</option><option>Exterior</option></select>
+    <select id="s-st"><option value="">Todo o funil</option></select>
+    <button id="s-new" class="primary">Adicionar estúdio</button>
+  </div>
+  <div id="s-msg" class="msg" hidden></div>
+  <form id="s-form" class="card form" hidden>
+    <h3 class="title">Novo estúdio</h3>
+    <div class="grid2">
+      <div class="field"><label>Nome *</label><input id="sf-name" required></div>
+      <div class="field"><label>País</label><input id="sf-country" placeholder="Brasil, Portugal…"></div>
+      <div class="field"><label>Site</label><input id="sf-site" placeholder="https://"></div>
+      <div class="field"><label>E-mail de contato</label><input id="sf-email" type="email"></div>
+      <div class="field"><label>Página de carreiras</label><select id="sf-ats"><option value="">Nenhuma / não monitorar</option><option value="greenhouse">Greenhouse</option><option value="lever">Lever</option><option value="ashby">Ashby</option><option value="workable">Workable</option></select></div>
+      <div class="field"><label>Identificador da página</label><input id="sf-slug" placeholder="trecho da URL, ex.: utopia"></div>
+    </div>
+    <div class="field"><label>Anotações</label><textarea id="sf-notes" rows="2"></textarea></div>
+    <div class="actions"><button type="submit" class="primary">Salvar</button><button type="button" id="sf-cancel">Cancelar</button></div>
+  </form>
+  <div class="grid" id="s-grid"></div>
 </main>
 
 <main id="view-docs" hidden>

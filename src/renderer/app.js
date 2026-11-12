@@ -118,15 +118,22 @@ function applyPrepared(first) {
   }
 }
 
-async function openModal(id) {
-  try { cur = await window.jh.prepare(id); } catch (e) { return fail(e); }
+// O mesmo modal serve para vaga (kind 'job') e para estúdio (kind 'studio').
+const isStudio = () => cur && cur.job && cur.job.kind === 'studio';
+const prepareFor = (kind, id, lang, sel) => (kind === 'studio' ? window.jh.prepareStudio(id, lang, sel) : window.jh.prepare(id, lang, sel));
+
+async function openModal(id, kind = 'job') {
+  try { cur = await prepareFor(kind, id); } catch (e) { return fail(e); }
   applyPrepared(true);
+  $('m-sent').textContent = isStudio() ? 'Marcar como contatado' : 'Marcar como enviada';
+  $('m-to').placeholder = isStudio() ? 'e-mail de contato do estúdio (veja no site dele)' : 'e-mail de contato da vaga (se houver)';
   $('modal').hidden = false;
 }
 async function reprepare(lang, sel) {
   try {
-    cur = await window.jh.prepare(cur.job.id, lang, sel);
-    if (sel) await window.jh.saveJobDocs(cur.job.id, cur.lang, cur.sel);
+    const kind = isStudio() ? 'studio' : 'job';
+    cur = await prepareFor(kind, cur.job.id, lang, sel);
+    if (sel) await (kind === 'studio' ? window.jh.saveStudioDocs : window.jh.saveJobDocs)(cur.job.id, cur.lang, cur.sel);
     applyPrepared(false);
   } catch (e) { $('m-note').textContent = `Erro: ${errText(e)}`; }
 }
@@ -150,12 +157,72 @@ $('m-copy').addEventListener('click', async () => {
 $('m-draft').addEventListener('click', async () => {
   $('m-draft').disabled = true;
   try {
-    await window.jh.createDraft({ id: cur.job.id, lang: $('m-lang').value, to: $('m-to').value.trim(), subject: $('m-subject').value, body: $('m-body').value, sel: currentSel() });
+    await window.jh.createDraft({ kind: cur.job.kind, id: cur.job.id, lang: $('m-lang').value, to: $('m-to').value.trim(), subject: $('m-subject').value, body: $('m-body').value, sel: currentSel() });
     $('m-note').textContent = 'Rascunho criado no Gmail. Abra a pasta Rascunhos, revise e envie.';
-    await refresh();
+    await (isStudio() ? renderStudios() : refresh());
   } catch (e) { $('m-note').textContent = `Erro: ${errText(e)}`; } finally { $('m-draft').disabled = false; }
 });
-$('m-sent').addEventListener('click', async () => { await act(cur.job.id, 'enviada'); closeModal(); });
+$('m-sent').addEventListener('click', async () => {
+  if (isStudio()) {
+    try { await window.jh.updateStudio(cur.job.id, { status: 'contatado' }); closeModal(); await renderStudios(); } catch (e) { $('m-note').textContent = `Erro: ${errText(e)}`; }
+    return;
+  }
+  await act(cur.job.id, 'enviada');
+  closeModal();
+});
+
+/* ---------- estúdios ---------- */
+const STUDIO_LABEL = { novo: 'Novo', contatar: 'Contatar', rascunho: 'Rascunho no Gmail', contatado: 'Contatado', respondeu: 'Respondeu', conversa: 'Em conversa', sem_interesse: 'Sem interesse' };
+const ATS_LABEL = { greenhouse: 'Greenhouse', lever: 'Lever', ashby: 'Ashby', workable: 'Workable' };
+const sMsg = (t) => { const m = $('s-msg'); m.textContent = t; m.hidden = !t; };
+
+function studioCard(s) {
+  const upd = async (fields) => { try { await window.jh.updateStudio(s.id, fields); sMsg(''); await renderStudios(); } catch (e) { sMsg(`Erro: ${errText(e)}`); } };
+  const status = h('select', { onchange: () => upd({ status: status.value }) }, ...Object.entries(STUDIO_LABEL).map(([v, l]) => h('option', { value: v }, l)));
+  status.value = s.status;
+  const notes = h('textarea', { class: 'notes', rows: 2, placeholder: 'Anotações (quem contatou, quando, o que responderam…)', onchange: () => upd({ notes: notes.value }) }, s.notes);
+  let armed = false;
+  const del = h('button', {
+    onclick: async () => {
+      if (!armed) { armed = true; del.textContent = 'Confirmar remoção'; setTimeout(() => { armed = false; del.textContent = 'Remover'; }, 4000); return; }
+      try { await window.jh.removeStudio(s.id); await renderStudios(); } catch (e) { sMsg(`Erro: ${errText(e)}`); }
+    },
+  }, 'Remover');
+  const link = (url, label) => url && h('button', { onclick: () => window.jh.open(url).catch((e) => sMsg(`Erro: ${errText(e)}`)) }, label);
+  return h('article', { class: `card ${s.status}` },
+    h('div', { class: 'row-top' }, h('div', {}, h('h3', { class: 'title' }, s.name), h('div', { class: 'co' }, [s.city, s.country].filter(Boolean).join(' · ') || 'Local não informado')), status),
+    h('div', { class: 'chips' },
+      s.ats ? h('span', { class: 'chip' }, `Carreiras vigiadas (${ATS_LABEL[s.ats]})`) : h('span', { class: 'chip' }, 'Sem página monitorável'),
+      s.email && h('span', { class: 'chip' }, s.email),
+      s.lastContact && h('span', { class: 'chip' }, `Contatado em ${new Date(s.lastContact).toLocaleDateString('pt-BR')}`)),
+    s.remoteEvidence ? h('ul', {}, h('li', {}, s.remoteEvidence)) : h('div', { class: 'warnings' }, 'Atenção: sem vaga remota conhecida, é abordagem espontânea.'),
+    notes,
+    h('div', { class: 'actions' },
+      h('button', { class: 'primary', onclick: () => openModal(s.id, 'studio') }, 'Preparar abordagem'),
+      link(s.site, 'Abrir site'), link(s.careersUrl, 'Carreiras'), del));
+}
+
+async function renderStudios() {
+  const { studios, counts } = await window.jh.studios({ text: $('s-q').value, region: $('s-reg').value, status: $('s-st').value });
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  $('s-stats').replaceChildren(stat(total, 'estúdios'), ...['contatar', 'rascunho', 'contatado', 'respondeu', 'conversa'].map((k) => stat(counts[k] || 0, STUDIO_LABEL[k].toLowerCase())));
+  $('s-grid').replaceChildren(...(studios.length ? studios.map(studioCard) : [h('div', { class: 'empty' }, 'Nenhum estúdio com esses filtros.')]));
+}
+
+for (const [v, l] of Object.entries(STUDIO_LABEL)) $('s-st').append(h('option', { value: v }, l));
+['s-q', 's-reg', 's-st'].forEach((id) => $(id).addEventListener('input', () => renderStudios().catch((e) => sMsg(`Erro: ${errText(e)}`))));
+$('s-new').addEventListener('click', () => { $('s-form').hidden = false; $('sf-name').focus(); });
+$('sf-cancel').addEventListener('click', () => { $('s-form').hidden = true; $('s-form').reset(); });
+$('s-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await window.jh.addStudio({ name: $('sf-name').value, country: $('sf-country').value, site: $('sf-site').value, email: $('sf-email').value, ats: $('sf-ats').value, atsSlug: $('sf-slug').value, notes: $('sf-notes').value });
+    $('s-form').reset();
+    $('s-form').hidden = true;
+    sMsg('');
+    await renderStudios();
+  } catch (err) { sMsg(`Erro: ${errText(err)}`); }
+});
 
 /* ---------- documentos ---------- */
 const DOC_SECTIONS = [
@@ -249,9 +316,10 @@ async function save() {
 /* ---------- navegação ---------- */
 document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', async () => {
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === t));
-  for (const v of ['vagas', 'docs', 'config']) $(`view-${v}`).hidden = t.dataset.view !== v;
+  for (const v of ['vagas', 'studios', 'docs', 'config']) $(`view-${v}`).hidden = t.dataset.view !== v;
   try {
     if (t.dataset.view === 'config') await renderConfig();
+    else if (t.dataset.view === 'studios') await renderStudios();
     else if (t.dataset.view === 'docs') await renderDocs();
     else await refresh();
   } catch (e) { fail(e); }

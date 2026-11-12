@@ -1,0 +1,210 @@
+[
+  {
+    "name": "Utopia",
+    "country": "Reino Unido / Europa",
+    "careersUrl": "https://apply.workable.com/utopia",
+    "ats": "workable",
+    "atsSlug": "utopia",
+    "remoteEvidence": "Anunciou 3D Artist (Architecture) totalmente remoto, em horário CET/Reino Unido, com 3ds Max, V-Ray e Corona. Sem patrocínio de visto.",
+    "notes": "Página de carreiras monitorada pelo app. Em 12/11/2026 estava com 0 vagas abertas."
+  },
+  {
+    "name": "Boldr",
+    "country": "Internacional",
+    "site": "https://www.boldrimpact.com",
+    "careersUrl": "https://apply.workable.com/boldr",
+    "ats": "workable",
+    "atsSlug": "boldr",
+    "remoteEvidence": "Empresa de terceirização com equipe global; anunciou 3D Artist remoto com 3ds Max e Corona Renderer, preferindo formação em arquitetura e valorizando gestão de equipe.",
+    "notes": "Página de carreiras monitorada pelo app. Em 12/11/2026 estava com 0 vagas abertas no Workable."
+  },
+  {
+    "name": "Soluis",
+    "country": "Reino Unido",
+    "site": "https://www.soluis.com",
+    "careersUrl": "https://apply.workable.com/soluis",
+    "ats": "workable",
+    "atsSlug": "soluis",
+    "remoteEvidence": "Anunciou CG Artist de ArchViz como contrato remoto, com equipes no Reino Unido, Europa, Emirados e Sudeste Asiático; pede 3ds Max e Corona.",
+    "notes": "Página de carreiras monitorada pelo app. Em 12/11/2026 estava com 0 vagas abertas."
+  },
+  {
+    "name": "Visualhouse",
+    "country": "Reino Unido",
+    "careersUrl": "https://apply.workable.com/visualhouse",
+    "ats": "workable",
+    "atsSlug": "visualhouse",
+    "remoteEvidence": "",
+    "notes": "Estúdio de ArchViz em Londres. A vaga vista no LinkedIn era em Londres: remoto NÃO confirmado. Página de carreiras monitorada pelo app."
+  },
+  {
+    "name": "Squint/Opera",
+    "country": "Reino Unido",
+    "careersUrl": "https://job-boards.greenhouse.io/squintopera",
+    "ats": "greenhouse",
+    "atsSlug": "squintopera",
+    "remoteEvidence": "",
+    "notes": "Estúdio criativo de visualização. Remoto NÃO confirmado. Página de carreiras monitorada pelo app; 0 vagas em 12/11/2026."
+  },
+  {
+    "name": "Higharc",
+    "country": "Estados Unidos",
+    "careersUrl": "https://jobs.ashbyhq.com/higharc",
+    "ats": "ashby",
+    "atsSlug": "higharc",
+    "remoteEvidence": "Startup de projeto de casas; o time de visualização já anunciou 3D Artist remoto. Em 12/11/2026 as vagas abertas eram remotas, mas quase todas restritas aos EUA.",
+    "notes": "Página de carreiras monitorada pelo app. Foco em assets e cenas fotorrealistas; confira a restrição de país em cada vaga."
+  },
+  {
+    "name": "Karim CG Visuals",
+    "country": "Internacional",
+    "email": "careers@karimcgvisuals.com",
+    "remoteEvidence": "Abriu vagas de ArchViz remotas em tempo integral, com equipe global, para empreendimentos de luxo na África e outros mercados.",
+    "notes": "O anúncio estava marcado como inativo. Pediam assunto \"Remote ArchViz Application – [sua especialidade]\"."
+  },
+  {
+    "name": "Lobo Studio",
+    "country": "Espanha",
+    "email": "team@lobostudio.es",
+    "remoteEvidence": "Anúncio (via agregador) de 3D Archviz Artist remoto, em tempo integral, com 3ds Max e Corona/V-Ray.",
+    "notes": "Anúncio veio de agregador; confirme no site do estúdio antes."
+  },
+  {
+    "name": "Rendify",
+    "country": "Canadá",
+    "remoteEvidence": "Anunciou Global 3D Artist (interior e exterior) aberto a candidatos do mundo todo, sem restrição de local, com 3ds Max e Corona; valorizava formação em arquitetura e IA.",
+    "notes": "A vaga estava encerrada; bom alvo para candidatura espontânea. Não aceita currículos de agências."
+  },
+  {
+    "name": "BINYAN",
+    "country": "Austrália",
+    "careersUrl": "https://cgarchitect.com/jobs/1bb069c2-3d-artist-remote",
+    "remoteEvidence": "Anunciou 3D Artist com trabalho remoto permitido, 3ds Max com V-Ray ou Corona.",
+    "notes": "Fuso muito diferente do Brasil."
+  },
+  {
+    "name": "Qoo Studio",
+    "country": "Canadá",
+    "careersUrl": "https://cgarchitect.com/jobs/e9a44fb9-senior-3d-artist-remote",
+    "remoteEvidence": "Anunciou Senior 3D Artist remoto (ArchViz, XR e imersivo), com 3ds Max e V-Ray/Corona.",
+    "notes": "Fuso de Toronto é próximo ao de Brasília."
+  },
+  {
+    "name": "The Boundary",
+    "country": "Reino Unido",
+    "careersUrl": "https://dynamitejobs.com/company/theboundary/remote-job/freelance-artist",
+    "remoteEvidence": "Anunciou Freelance Artist remoto (contrato de 3 meses) para visualização arquitetônica fotorrealista, com 3ds Max e Corona.",
+    "notes": "Também contrata para o escritório no Porto (Portugal)."
+  },
+  {
+    "name": "WOW Remote Teams",
+    "country": "Estados Unidos (agência para a América Latina)",
+    "remoteEvidence": "Agência que coloca profissionais da América Latina em empresas dos EUA; anunciou 3D Visualizer remoto com 3ds Max e Corona.",
+    "notes": "Não é estúdio: é intermediária. Bom para entrar no banco de talentos."
+  },
+  {
+    "name": "All These Wonders",
+    "country": "Internacional",
+    "site": "https://www.allthesewonders.co",
+    "remoteEvidence": "Anunciou freelance remoto, com candidatos internacionais bem-vindos, para ambientes de varejo e ArchViz.",
+    "notes": "O fluxo deles é Blender, não 3ds Max."
+  },
+  {
+    "name": "Shadowplay",
+    "country": "Estados Unidos",
+    "careersUrl": "https://cgconnect.chaos.com/jobs",
+    "remoteEvidence": "Apareceu no CGconnect com Senior 3D Artist (Remote), Miami.",
+    "notes": "Não verifiquei restrição de país."
+  },
+  {
+    "name": "R2U",
+    "country": "Brasil",
+    "city": "São Paulo, SP",
+    "site": "https://r2u.io",
+    "email": "jobs@r2u.io",
+    "remoteEvidence": "Anuncia Artista 3D de arquitetura 100% remoto, PJ e com rotina flexível, para o mercado imobiliário.",
+    "notes": "O e-mail jobs@r2u.io veio de um anúncio antigo. A vaga atual paga R$ 3.000/mês."
+  },
+  {
+    "name": "actium3d",
+    "country": "Brasil",
+    "city": "São Paulo, SP",
+    "careersUrl": "https://www.bne.com.br/vaga-de-emprego-na-area-arte-e-cultura-em-sao-paulo-sp/artista/5569533",
+    "remoteEvidence": "Vaga de artista 3D generalista em equipe de visualização arquitetônica, home office.",
+    "notes": "Contrato efetivo (CLT)."
+  },
+  {
+    "name": "Oficina3D",
+    "country": "Brasil",
+    "city": "Blumenau, SC",
+    "site": "https://oficina3d.com.br",
+    "email": "contato@oficina3d.com.br",
+    "remoteEvidence": "",
+    "notes": "Estúdio de visualização para lançamentos imobiliários, 25+ anos, atende Brasil e exterior. Sem vaga remota conhecida: abordagem espontânea."
+  },
+  {
+    "name": "Emura",
+    "country": "Brasil",
+    "site": "https://www.emura.com.br",
+    "remoteEvidence": "",
+    "notes": "Maquete eletrônica e imagens para empreendimentos desde 2008, projetos em todo o Brasil. Sem vaga remota conhecida."
+  },
+  {
+    "name": "AVA Design 3D",
+    "country": "Brasil",
+    "city": "Rio de Janeiro, RJ",
+    "site": "https://www.avadesign3d.com.br",
+    "remoteEvidence": "",
+    "notes": "Estúdio de ArchViz para lançamentos imobiliários (imagens e vídeos). Sem vaga remota conhecida."
+  },
+  {
+    "name": "Pixel Blend",
+    "country": "Brasil",
+    "city": "Rio de Janeiro, RJ",
+    "site": "https://www.pixelblend.com.br",
+    "remoteEvidence": "",
+    "notes": "Maquete eletrônica, tour 360º e animação para o mercado imobiliário. Sem vaga remota conhecida."
+  },
+  {
+    "name": "CEDCAD Studio",
+    "country": "Brasil",
+    "site": "https://www.cedcad.com.br",
+    "remoteEvidence": "Atende on-line todo o Brasil.",
+    "notes": "Maquete eletrônica de alto padrão com pós-produção em IA. Sem vaga remota conhecida."
+  },
+  {
+    "name": "Virtual Maquetes",
+    "country": "Brasil",
+    "site": "https://www.virtualmaquetes.com.br",
+    "remoteEvidence": "",
+    "notes": "Visualização 3D para lançamentos imobiliários e arquitetura. Sem vaga remota conhecida."
+  },
+  {
+    "name": "Formiga Studio 3D",
+    "country": "Brasil",
+    "site": "https://formigastudio3d.com",
+    "remoteEvidence": "",
+    "notes": "Maquete eletrônica, planta humanizada e perspectivas para construtoras. Sem vaga remota conhecida."
+  },
+  {
+    "name": "Bravo 3D",
+    "country": "Brasil",
+    "site": "https://www.bravo3d.com.br",
+    "remoteEvidence": "",
+    "notes": "28 anos no mercado imobiliário: animação, maquete eletrônica e realidade virtual. Sem vaga remota conhecida."
+  },
+  {
+    "name": "Maverick Frame",
+    "country": "Brasil / Internacional",
+    "site": "https://maverickframe.com",
+    "remoteEvidence": "",
+    "notes": "Maquete eletrônica, animação e CGI de produto; site em português e inglês. Sem vaga remota conhecida."
+  },
+  {
+    "name": "Vide 3D",
+    "country": "Brasil",
+    "site": "https://www.3dvide.com",
+    "remoteEvidence": "",
+    "notes": "Renderização para lançamentos imobiliários, plantas humanizadas e tours. Sem vaga remota conhecida."
+  }
+]

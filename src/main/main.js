@@ -5,7 +5,8 @@ const path = require('node:path');
 
 const { Store, STATUSES } = require('../core/store');
 const { runAll } = require('../core/sources');
-const { buildApplication } = require('../core/templates');
+const { buildApplication, buildOutreach, studioLang } = require('../core/templates');
+const { Studios, STUDIO_STATUSES, mergeBoards } = require('../core/studios');
 const gmail = require('../core/gmail');
 const { Library, KINDS, LANGS } = require('../core/library');
 const cfgmod = require('./config');
@@ -13,6 +14,7 @@ const cfgmod = require('./config');
 let win;
 let store;
 let library;
+let studios;
 let cfgFile;
 let secretsFile;
 let config;
@@ -60,6 +62,28 @@ function seedIfNeeded() {
   store.setSetting('seededFiles', [...done]);
 }
 
+/* Lista de estúdios que vem com o app (seed/estudios). Cada arquivo entra uma única vez. */
+function seedStudios() {
+  const dir = path.join(__dirname, '..', '..', 'seed', 'estudios');
+  const done = new Set(store.getSetting('seededStudioFiles', []));
+  for (const f of fs.existsSync(dir) ? fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort() : []) {
+    if (done.has(f)) continue;
+    studios.importMany(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
+    done.add(f);
+  }
+  store.setSetting('seededStudioFiles', [...done]);
+}
+
+function prepareStudio(id, lang, sel) {
+  const s = studios.get(String(id));
+  need(s, 'Estúdio não encontrado.');
+  const l = lang === 'pt' || lang === 'en' ? lang : studioLang(s);
+  const saved = s.docs && s.docs.lang === l ? s.docs : null;
+  const chosen = sel ? cleanSel(sel) : saved ? cleanSel(saved) : library.defaults(l);
+  const t = buildOutreach(s, { lang: l, profile: config.profile, attach: { cv: !!chosen.cv, portfolio: !!chosen.portfolio, cover: !!chosen.cover } });
+  return { ...t, lang: l, to: s.email || '', sel: chosen, docs: library.list(), job: { kind: 'studio', id: s.id, title: 'Candidatura espontânea', company: s.name, url: s.site || s.careersUrl } };
+}
+
 /* Versões antigas guardavam só o caminho dos PDFs; traz esses arquivos para a biblioteca uma única vez. */
 function migrateOldFiles() {
   const f = config.files || {};
@@ -88,7 +112,7 @@ function prepare(id, lang, sel) {
   const saved = job.docs && job.docs.lang === l ? job.docs : null;
   const chosen = sel ? cleanSel(sel) : saved ? cleanSel(saved) : library.defaults(l);
   const t = buildApplication(job, { lang: l, profile: config.profile, attach: { cv: !!chosen.cv, portfolio: !!chosen.portfolio, cover: !!chosen.cover } });
-  return { ...t, lang: l, to: job.email || '', sel: chosen, docs: library.list(), job: { id: job.id, title: job.title, company: job.company, url: job.url } };
+  return { ...t, lang: l, to: job.email || '', sel: chosen, docs: library.list(), job: { kind: 'job', id: job.id, title: job.title, company: job.company, url: job.url } };
 }
 
 function registerIpc() {
@@ -104,7 +128,9 @@ function registerIpc() {
   });
 
   ipcMain.handle('scan:run', async (_e, force) => {
-    const { jobs, report, lastFetch } = await runAll(config, { lastFetch: store.getSetting('lastFetch', {}), force: !!force });
+    // As páginas de carreiras dos estúdios entram na busca junto com as configuradas à mão.
+    const scanConfig = { ...config, companies: mergeBoards(config.companies, studios.boards()) };
+    const { jobs, report, lastFetch } = await runAll(scanConfig, { lastFetch: store.getSetting('lastFetch', {}), force: !!force });
     store.setSetting('lastFetch', lastFetch);
     return { added: store.upsertJobs(jobs), report };
   });
@@ -143,6 +169,21 @@ function registerIpc() {
     need(!err, `Não consegui abrir: ${err}`);
   });
 
+  /* ---------- estúdios (candidatura espontânea) ---------- */
+  ipcMain.handle('studios:list', (_e, q = {}) => ({
+    studios: studios.list({ status: STUDIO_STATUSES.includes(q.status) ? q.status : undefined, region: q.region, text: String(q.text || '').slice(0, 100) }),
+    counts: studios.counts(),
+  }));
+  ipcMain.handle('studios:add', (_e, input) => studios.add(input || {}));
+  ipcMain.handle('studios:update', (_e, id, fields) => studios.update(String(id), fields || {}));
+  ipcMain.handle('studios:remove', (_e, id) => studios.remove(String(id)));
+  ipcMain.handle('studios:prepare', (_e, id, lang, sel) => prepareStudio(id, lang, sel));
+  ipcMain.handle('studios:docs', (_e, id, lang, sel) => {
+    const s = cleanSel(sel);
+    studios.setDocs(String(id), { lang: lang === 'pt' ? 'pt' : 'en', ...s });
+    return s;
+  });
+
   ipcMain.handle('app:prepare', (_e, id, lang, sel) => prepare(id, lang, sel));
   ipcMain.handle('jobs:docs', (_e, id, lang, sel) => {
     const s = cleanSel(sel);
@@ -168,11 +209,19 @@ function registerIpc() {
   ipcMain.handle('gmail:draft', async (_e, p) => {
     const g = getGmail();
     need(g, 'Conecte o Gmail nas Configurações primeiro.');
-    const job = store.get(String(p.id));
-    need(job, 'Vaga não encontrada.');
     need(!p.to || /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(p.to), 'E-mail do destinatário inválido.');
     const lang = p.lang === 'pt' ? 'pt' : 'en';
     const sel = cleanSel(p.sel);
+    if (p.kind === 'studio') {
+      const s = studios.get(String(p.id));
+      need(s, 'Estúdio não encontrado.');
+      const draft = await g.createDraft({ to: p.to || '', subject: String(p.subject).slice(0, 300), body: String(p.body).slice(0, 20000), attachments: library.attachments(sel) });
+      studios.setDocs(s.id, { lang, ...sel });
+      studios.update(s.id, { status: 'rascunho', ...(p.to && !s.email ? { email: p.to } : {}) });
+      return draft;
+    }
+    const job = store.get(String(p.id));
+    need(job, 'Vaga não encontrada.');
     const draft = await g.createDraft({ to: p.to || '', subject: String(p.subject).slice(0, 300), body: String(p.body).slice(0, 20000), attachments: library.attachments(sel) });
     store.setJobDocs(job.id, { lang, ...sel });
     if (p.to) store.setEmail(job.id, p.to);
@@ -204,8 +253,10 @@ if (!app.requestSingleInstanceLock()) {
     config = cfgmod.load(cfgFile);
     store = await Store.open(path.join(dir, 'jobhunter.sqlite'));
     library = new Library(store, path.join(dir, 'documentos'));
+    studios = new Studios(store);
     migrateOldFiles();
     seedIfNeeded();
+    seedStudios();
     registerIpc();
     createWindow();
   });

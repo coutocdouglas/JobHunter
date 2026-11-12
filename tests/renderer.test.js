@@ -8,7 +8,8 @@ const { JSDOM } = require('jsdom');
 const os = require('node:os');
 const { Store } = require('../src/core/store');
 const { Library } = require('../src/core/library');
-const { buildApplication } = require('../src/core/templates');
+const { Studios } = require('../src/core/studios');
+const { buildApplication, buildOutreach, studioLang } = require('../src/core/templates');
 const { finalize } = require('../src/core/sources');
 
 const root = path.join(__dirname, '..');
@@ -27,7 +28,21 @@ async function boot() {
   lib.import(mk('Portfolio.pdf'), { kind: 'portfolio', lang: 'any' });
   let nextCover = mk('Cover_Acme.pdf');
   const drafts = [];
+  const studios = new Studios(store);
+  studios.importMany(require('../seed/estudios/estudios-2026-11-12.json'));
   const jh = {
+    studios: async (q) => ({ studios: studios.list({ status: q.status || undefined, region: q.region, text: q.text }), counts: studios.counts() }),
+    addStudio: async (i) => studios.add(i),
+    updateStudio: async (id, f) => studios.update(id, f),
+    removeStudio: async (id) => studios.remove(id),
+    prepareStudio: async (id, lang, sel) => {
+      const s = studios.get(id);
+      const l = lang || studioLang(s);
+      const chosen = sel || lib.defaults(l);
+      const t = buildOutreach(s, { lang: l, attach: { cv: !!chosen.cv, portfolio: !!chosen.portfolio, cover: !!chosen.cover } });
+      return { ...t, lang: l, to: s.email || '', sel: chosen, docs: lib.list(), job: { kind: 'studio', id: s.id, title: 'Candidatura espontânea', company: s.name, url: s.site } };
+    },
+    saveStudioDocs: async (id, lang, sel) => studios.setDocs(id, { lang, ...sel }),
     list: async (q) => ({ jobs: store.list({ status: q.status || undefined, minFit: q.minFit, region: q.region, text: q.text }), counts: store.counts() }),
     setStatus: async (id, s) => { store.setStatus(id, s); return store.counts(); },
     prepare: async (id, lang, sel) => {
@@ -47,7 +62,7 @@ async function boot() {
   dom.window.jh = jh;
   dom.window.eval(appJs);
   await new Promise((r) => setTimeout(r, 50));
-  return { dom, doc: dom.window.document, drafts, store, lib };
+  return { dom, doc: dom.window.document, drafts, store, lib, studios };
 }
 const tick = () => new Promise((r) => setTimeout(r, 60));
 
@@ -116,4 +131,50 @@ test('aba Documentos lista os arquivos por tipo e marca o padrão', async () => 
   assert.equal(doc.querySelectorAll('#docs-cv .badge').length, 2); // um padrão por idioma
   assert.equal(doc.querySelectorAll('#docs-portfolio .doc').length, 1);
   assert.match(doc.getElementById('docs-cover').textContent, /Nenhum arquivo carregado/);
+});
+
+test('aba Estúdios: separada das vagas, abordagem vira rascunho e marca contatado', async () => {
+  const { doc, drafts, studios, dom } = await boot();
+  doc.querySelector('.tab[data-view="studios"]').click();
+  await tick();
+  assert.equal(doc.getElementById('view-studios').hidden, false);
+  assert.equal(doc.getElementById('view-vagas').hidden, true);
+  const cards = doc.querySelectorAll('#s-grid .card');
+  assert.ok(cards.length >= 20);
+  // nenhum estúdio aparece entre as vagas
+  assert.ok(![...doc.querySelectorAll('#grid .title')].some((t) => t.textContent === 'Oficina3D'));
+
+  doc.getElementById('s-reg').value = 'Brasil';
+  doc.getElementById('s-reg').dispatchEvent(new dom.window.Event('input'));
+  await tick();
+  const oficina = [...doc.querySelectorAll('#s-grid .card')].find((c) => c.querySelector('.title').textContent === 'Oficina3D');
+  assert.ok(oficina);
+  [...oficina.querySelectorAll('button')].find((b) => b.textContent === 'Preparar abordagem').click();
+  await tick();
+  assert.equal(doc.getElementById('m-lang').value, 'pt');
+  assert.equal(doc.getElementById('m-to').value, 'contato@oficina3d.com.br');
+  assert.match(doc.getElementById('m-body').value, /Olá, equipe Oficina3D/);
+  assert.equal(doc.getElementById('m-sent').textContent, 'Marcar como contatado');
+  doc.getElementById('m-draft').click();
+  await tick();
+  assert.equal(drafts.at(-1).kind, 'studio');
+  doc.getElementById('m-sent').click();
+  await tick();
+  const s = studios.list().find((x) => x.name === 'Oficina3D');
+  assert.equal(s.status, 'contatado');
+});
+
+test('adicionar estúdio pelo formulário', async () => {
+  const { doc, dom, studios } = await boot();
+  doc.querySelector('.tab[data-view="studios"]').click();
+  await tick();
+  doc.getElementById('s-new').click();
+  doc.getElementById('sf-name').value = 'Estúdio Novo';
+  doc.getElementById('sf-country').value = 'Portugal';
+  doc.getElementById('sf-ats').value = 'lever';
+  doc.getElementById('sf-slug').value = 'estudionovo';
+  doc.getElementById('s-form').dispatchEvent(new dom.window.Event('submit', { cancelable: true }));
+  await tick();
+  assert.ok(studios.list().some((x) => x.name === 'Estúdio Novo' && x.ats === 'lever'));
+  assert.equal(doc.getElementById('s-form').hidden, true);
 });
