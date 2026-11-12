@@ -7,10 +7,12 @@ const { Store, STATUSES } = require('../core/store');
 const { runAll } = require('../core/sources');
 const { buildApplication } = require('../core/templates');
 const gmail = require('../core/gmail');
+const { Library, KINDS, LANGS } = require('../core/library');
 const cfgmod = require('./config');
 
 let win;
 let store;
+let library;
 let cfgFile;
 let secretsFile;
 let config;
@@ -55,13 +57,35 @@ function seedIfNeeded() {
   store.setSetting('seeded', true);
 }
 
-function attachmentsFor(lang, want) {
-  const f = config.files;
-  const out = [];
-  const cv = lang === 'pt' ? f.cvPt : f.cvEn;
-  if (want.cv) { need(cv && fs.existsSync(cv), 'Escolha o arquivo do currículo nas Configurações.'); out.push({ path: cv }); }
-  if (want.portfolio) { need(f.portfolio && fs.existsSync(f.portfolio), 'Escolha o arquivo do portfólio nas Configurações.'); out.push({ path: f.portfolio }); }
+/* Versões antigas guardavam só o caminho dos PDFs; traz esses arquivos para a biblioteca uma única vez. */
+function migrateOldFiles() {
+  const f = config.files || {};
+  const pairs = [[f.cvPt, 'cv', 'pt'], [f.cvEn, 'cv', 'en'], [f.portfolio, 'portfolio', 'any']];
+  for (const [p, kind, lang] of pairs) {
+    if (p && fs.existsSync(p)) { try { library.import(p, { kind, lang }); } catch { /* ignora arquivo inválido */ } }
+  }
+  if (pairs.some(([p]) => p)) { config.files = { cvPt: '', cvEn: '', portfolio: '' }; cfgmod.save(cfgFile, config); }
+}
+
+/** Normaliza a escolha vinda da tela: só ids que existem e do tipo certo. */
+function cleanSel(sel = {}) {
+  const out = { cv: null, portfolio: null, cover: null };
+  for (const k of KINDS) {
+    const d = sel[k] ? library.get(sel[k]) : null;
+    if (d && d.kind === k) out[k] = d.id;
+  }
   return out;
+}
+
+function prepare(id, lang, sel) {
+  const job = store.get(String(id));
+  need(job, 'Vaga não encontrada.');
+  const l = lang === 'pt' || lang === 'en' ? lang : job.cvLang || (/brasil|brazil/i.test(`${job.location} ${job.source}`) ? 'pt' : 'en');
+  // ordem: escolha da tela > escolha salva da vaga (mesmo idioma) > padrões da biblioteca
+  const saved = job.docs && job.docs.lang === l ? job.docs : null;
+  const chosen = sel ? cleanSel(sel) : saved ? cleanSel(saved) : library.defaults(l);
+  const t = buildApplication(job, { lang: l, profile: config.profile, attach: { cv: !!chosen.cv, portfolio: !!chosen.portfolio, cover: !!chosen.cover } });
+  return { ...t, lang: l, to: job.email || '', sel: chosen, docs: library.list(), job: { id: job.id, title: job.title, company: job.company, url: job.url } };
 }
 
 function registerIpc() {
@@ -97,22 +121,30 @@ function registerIpc() {
     gmailClient = null;
     return { ...config, gmailConnected: !!getGmail(), hasClientSecret: !!readSecrets().clientSecret };
   });
-  ipcMain.handle('files:pick', async (_e, kind) => {
-    need(['cvPt', 'cvEn', 'portfolio'].includes(kind), 'Tipo de arquivo inválido.');
-    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'PDF', extensions: ['pdf'] }] });
-    if (r.canceled || !r.filePaths[0]) return null;
-    config.files[kind] = r.filePaths[0];
-    cfgmod.save(cfgFile, config);
-    return r.filePaths[0];
+  /* ---------- biblioteca de documentos ---------- */
+  ipcMain.handle('docs:list', () => library.list());
+  ipcMain.handle('docs:import', async (_e, kind, lang) => {
+    need(KINDS.includes(kind), 'Tipo de documento inválido.');
+    need(LANGS.includes(lang), 'Idioma inválido.');
+    const r = await dialog.showOpenDialog(win, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'PDF ou Word', extensions: ['pdf', 'docx', 'doc'] }] });
+    if (r.canceled) return [];
+    return r.filePaths.map((p) => library.import(p, { kind, lang }));
+  });
+  ipcMain.handle('docs:remove', (_e, id) => library.remove(String(id)));
+  ipcMain.handle('docs:default', (_e, id) => library.setDefault(String(id)));
+  ipcMain.handle('docs:lang', (_e, id, lang) => library.setLang(String(id), lang));
+  ipcMain.handle('docs:open', async (_e, id) => {
+    const d = library.get(String(id));
+    need(d, 'Documento não encontrado.');
+    const err = await shell.openPath(library.pathOf(d));
+    need(!err, `Não consegui abrir: ${err}`);
   });
 
-  ipcMain.handle('app:prepare', (_e, id, lang) => {
-    const job = store.get(String(id));
-    need(job, 'Vaga não encontrada.');
-    const l = lang === 'pt' || lang === 'en' ? lang : job.cvLang || undefined;
-    const t = buildApplication(job, { lang: l, profile: config.profile });
-    const f = config.files;
-    return { ...t, to: job.email || '', cvFile: t.lang === 'pt' ? f.cvPt : f.cvEn, portfolioFile: f.portfolio, job: { id: job.id, title: job.title, company: job.company, url: job.url } };
+  ipcMain.handle('app:prepare', (_e, id, lang, sel) => prepare(id, lang, sel));
+  ipcMain.handle('jobs:docs', (_e, id, lang, sel) => {
+    const s = cleanSel(sel);
+    store.setJobDocs(String(id), { lang: lang === 'pt' ? 'pt' : 'en', ...s });
+    return s;
   });
 
   ipcMain.handle('gmail:connect', async () => {
@@ -137,7 +169,9 @@ function registerIpc() {
     need(job, 'Vaga não encontrada.');
     need(!p.to || /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(p.to), 'E-mail do destinatário inválido.');
     const lang = p.lang === 'pt' ? 'pt' : 'en';
-    const draft = await g.createDraft({ to: p.to || '', subject: String(p.subject).slice(0, 300), body: String(p.body).slice(0, 20000), attachments: attachmentsFor(lang, { cv: !!p.attachCv, portfolio: !!p.attachPortfolio }) });
+    const sel = cleanSel(p.sel);
+    const draft = await g.createDraft({ to: p.to || '', subject: String(p.subject).slice(0, 300), body: String(p.body).slice(0, 20000), attachments: library.attachments(sel) });
+    store.setJobDocs(job.id, { lang, ...sel });
     if (p.to) store.setEmail(job.id, p.to);
     store.setStatus(job.id, 'rascunho');
     return draft;
@@ -166,6 +200,8 @@ if (!app.requestSingleInstanceLock()) {
     secretsFile = path.join(dir, 'secrets.bin');
     config = cfgmod.load(cfgFile);
     store = await Store.open(path.join(dir, 'jobhunter.sqlite'));
+    library = new Library(store, path.join(dir, 'documentos'));
+    migrateOldFiles();
     seedIfNeeded();
     registerIpc();
     createWindow();

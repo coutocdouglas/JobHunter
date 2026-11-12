@@ -12,6 +12,7 @@
   <h1>JobHunter</h1>
   <nav>
     <button class="tab on" data-view="vagas">Vagas</button>
+    <button class="tab" data-view="docs">Documentos</button>
     <button class="tab" data-view="config">Configurações</button>
   </nav>
   <div class="spacer"></div>
@@ -31,14 +32,18 @@
   <div class="grid" id="grid"></div>
 </main>
 
+<main id="view-docs" hidden>
+  <p class="help">Carregue aqui seus currículos, portfólios e cover letters. O app guarda uma cópia de cada arquivo, e é daqui que saem os anexos dos rascunhos. Marque um <b>padrão</b> por idioma: ele vem selecionado em cada candidatura e você troca quando quiser. Cover letter só entra quando você escolhe.</p>
+  <div id="docs-msg" class="msg" hidden></div>
+  <section id="docs-cv"></section>
+  <section id="docs-portfolio"></section>
+  <section id="docs-cover"></section>
+</main>
+
 <main id="view-config" hidden>
   <section>
     <h2>Seus dados (usados nos e-mails)</h2>
     <div class="form" id="f-profile"></div>
-  </section>
-  <section>
-    <h2>Arquivos para anexar</h2>
-    <div class="form" id="f-files"></div>
   </section>
   <section>
     <h2>Gmail (só cria rascunhos, nunca envia)</h2>
@@ -65,10 +70,9 @@
     <div class="row"><label>Para</label><input id="m-to" type="email" placeholder="e-mail de contato da vaga (se houver)"></div>
     <div class="row"><label>Assunto</label><input id="m-subject"></div>
     <textarea id="m-body" rows="14"></textarea>
-    <div class="row checks">
-      <label><input type="checkbox" id="m-cv" checked> Anexar currículo <span id="m-cvname" class="help"></span></label>
-      <label><input type="checkbox" id="m-pf" checked> Anexar portfólio <span id="m-pfname" class="help"></span></label>
-    </div>
+    <div class="row"><label>Currículo</label><select id="m-cv"></select></div>
+    <div class="row"><label>Portfólio</label><select id="m-pf"></select></div>
+    <div class="row"><label>Cover letter</label><div class="filebtn"><select id="m-cover"></select><button id="m-cover-up" type="button">Carregar…</button></div></div>
     <p id="m-note" class="help"></p>
     <div class="actions">
       <button id="m-copy">Copiar texto</button>

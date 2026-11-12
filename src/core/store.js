@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS jobs (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_dedupe ON jobs(dedupe_key);
 CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT);
+CREATE TABLE IF NOT EXISTS documents (
+  id TEXT PRIMARY KEY, kind TEXT NOT NULL, lang TEXT NOT NULL, name TEXT NOT NULL,
+  file TEXT NOT NULL, size INTEGER, added TEXT NOT NULL, is_default INTEGER NOT NULL DEFAULT 0
+);
 `;
 
 function rowToJob(r) {
@@ -28,6 +32,7 @@ function rowToJob(r) {
     reasons: JSON.parse(r.reasons || '[]'), warnings: JSON.parse(r.warnings || '[]'),
     curated: r.curated === 1, status: r.status, note: r.note || '',
     firstSeen: r.first_seen, updated: r.updated, cvLang: r.cv_lang,
+    docs: r.docs ? JSON.parse(r.docs) : null,
   };
 }
 
@@ -45,6 +50,8 @@ class Store {
     if (file && fs.existsSync(file)) db = new SQL.Database(fs.readFileSync(file));
     else db = new SQL.Database();
     db.exec(SCHEMA);
+    // migração: documentos escolhidos por vaga
+    try { db.exec('ALTER TABLE jobs ADD COLUMN docs TEXT'); } catch { /* coluna já existe */ }
     const s = new Store(SQL, db, file);
     s.save();
     return s;
@@ -77,10 +84,11 @@ class Store {
     );
     for (const j of jobs) {
       const sc = j.fit ? { fit: j.fit, reasons: j.reasons || [], warnings: j.warnings || [] } : scoreJob(j);
+      const v = (x) => (x === undefined ? null : x);
       ins.run([
-        j.id, j.dedupeKey, j.source, j.title, j.company, j.location,
+        j.id, j.dedupeKey, v(j.source), j.title, v(j.company), v(j.location),
         j.remote === null || j.remote === undefined ? null : j.remote ? 1 : 0,
-        j.url, j.posted, j.description || '', j.salary, j.email,
+        j.url, v(j.posted), j.description || '', v(j.salary), v(j.email),
         sc.fit, JSON.stringify(sc.reasons), JSON.stringify(sc.warnings), j.curated ? 1 : 0,
         j.status && STATUSES.includes(j.status) ? j.status : 'nova', now, now, j.cvLang || null,
       ]);
@@ -124,6 +132,12 @@ class Store {
 
   setEmail(id, email) {
     this.db.run('UPDATE jobs SET email = ?, updated = ? WHERE id = ?', [email || null, new Date().toISOString(), id]);
+    this.save();
+  }
+
+  /** Guarda quais documentos (currículo, portfólio, cover letter) foram escolhidos para a vaga. */
+  setJobDocs(id, docs) {
+    this.db.run('UPDATE jobs SET docs = ?, updated = ? WHERE id = ?', [docs ? JSON.stringify(docs) : null, new Date().toISOString(), id]);
     this.save();
   }
 

@@ -18,9 +18,19 @@ Na primeira execução o banco já vem com 15 vagas da varredura manual de 12/11
 
 Baixe o `.exe` mais recente em **Releases**. O instalador não é assinado digitalmente, então o Windows SmartScreen pode avisar: clique em "Mais informações" e "Executar assim mesmo".
 
+## Documentos (currículo, portfólio, cover letter)
+
+A aba **Documentos** é a biblioteca de onde saem todos os anexos.
+
+- Carregue quantas versões quiser de **currículo**, **portfólio** e **cover letter** (PDF ou Word, até 20 MB cada). O app guarda uma cópia na pasta dele, então mover ou apagar o original não quebra nada.
+- Cada arquivo tem um idioma (português, inglês ou qualquer). Marque um **padrão** por idioma: ele vem selecionado em cada candidatura daquele idioma.
+- **Cover letter** nunca entra sozinha. Escolha uma da biblioteca na tela da vaga, ou use **Carregar…** ali mesmo para subir uma feita só para aquela vaga.
+- Na candidatura você troca currículo, portfólio e cover letter em listas. A frase sobre os anexos no e-mail se ajusta à escolha, a menos que você já tenha editado o texto à mão. A escolha fica salva na vaga.
+- O Gmail aceita até 25 MB por e-mail. O app avisa antes de criar o rascunho se os anexos passarem disso.
+
 ## Primeiros passos
 
-1. Em **Configurações**, confira seus dados e escolha os PDFs do currículo (PT e EN) e do portfólio.
+1. Em **Documentos**, carregue o currículo em português, o em inglês e o portfólio. Em **Configurações**, confira seus dados.
 2. **Gmail** (necessário só para criar rascunhos e importar alertas):
    - No [Google Cloud Console](https://console.cloud.google.com/), crie um projeto e ative a **Gmail API**.
    - Em *Tela de consentimento OAuth*, tipo **Externo**, e publique o app em **Produção** (uso pessoal, sem verificação). Em modo "Teste", o login expira em 7 dias.

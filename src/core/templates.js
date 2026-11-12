@@ -40,15 +40,32 @@ function skillsLine(job, lang) {
   return parts.join(' ');
 }
 
+function joinList(items, and) {
+  return items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} ${and} ${items[items.length - 1]}`;
+}
+
+/** Frase sobre os anexos, de acordo com o que vai de fato no e-mail. */
+function attachLine(att, p, l) {
+  if (l === 'pt') {
+    const items = [att.cv && 'meu currículo', att.portfolio && 'meu portfólio', att.cover && 'minha carta de apresentação'].filter(Boolean);
+    return items.length ? `Envio em anexo ${joinList(items, 'e')} (mais trabalhos em ${p.site}).` : `Meus trabalhos estão em ${p.site}.`;
+  }
+  const items = [att.cv && 'my CV', att.portfolio && 'my portfolio', att.cover && 'a cover letter'].filter(Boolean);
+  const s = items.length ? `${joinList(items, 'and')} ${items.length > 1 ? 'are' : 'is'} attached` : '';
+  return s ? `${s.charAt(0).toUpperCase()}${s.slice(1)} (more work at ${p.site}).` : `My work is at ${p.site}.`;
+}
+
 /**
  * Monta assunto e corpo do e-mail de candidatura (texto puro).
  * Só afirma o que consta no currículo.
+ * `attach` diz quais documentos vão anexos: {cv, portfolio, cover}.
  */
-function buildApplication(job, { lang, profile = {} } = {}) {
+function buildApplication(job, { lang, profile = {}, attach = { cv: true, portfolio: true, cover: false } } = {}) {
   const p = { ...DEFAULT_PROFILE, ...profile };
   const l = lang || pickLang(job);
   const company = job.company && !/n[aã]o informada|not informed/i.test(job.company) ? job.company : '';
   const extra = skillsLine(job, l);
+  const files = attachLine(attach, p, l);
 
   if (l === 'pt') {
     const hello = company ? `Olá, equipe ${company},` : 'Olá,';
@@ -62,7 +79,7 @@ function buildApplication(job, { lang, profile = {} } = {}) {
         '',
         'Na Casa Digital entrego cerca de 10 projetos por ano para grandes construtoras, cuido da direção de arte e gerencio uma equipe, com foco na qualidade final das entregas.',
         '',
-        `Envio em anexo meu currículo e meu portfólio (mais trabalhos em ${p.site}). Moro em ${p.city.pt}. ${p.availability.pt}`,
+        `${files} Moro em ${p.city.pt}. ${p.availability.pt}`,
         '',
         'Fico à disposição para conversar.',
         '',
@@ -84,7 +101,7 @@ function buildApplication(job, { lang, profile = {} } = {}) {
       '',
       'At Casa Digital I deliver about 10 projects a year for major Brazilian construction firms, provide art direction and manage a team, with a focus on the quality of the final deliverables.',
       '',
-      `My CV and portfolio are attached (more work at ${p.site}). I am based in ${p.city.en} and fluent in English. ${p.availability.en}`,
+      `${files} I am based in ${p.city.en} and fluent in English. ${p.availability.en}`,
       '',
       'I would be glad to talk.',
       '',

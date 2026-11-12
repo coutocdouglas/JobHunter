@@ -83,25 +83,65 @@ async function runAlerts() {
 }
 
 /* ---------- candidatura ---------- */
+const LANG_LABEL = { pt: 'Português', en: 'Inglês', any: 'Qualquer idioma' };
 let cur = null;
-async function openModal(id, lang) {
-  try {
-    cur = await window.jh.prepare(id, lang);
-  } catch (e) { return fail(e); }
+let lastGenerated = { subject: '', body: '' };
+
+function docLabel(d) {
+  return `${d.name} · ${LANG_LABEL[d.lang]}${d.isDefault ? ' · padrão' : ''}`;
+}
+function fillSelect(el, kind, selected, emptyLabel) {
+  const docs = cur.docs.filter((d) => d.kind === kind);
+  el.replaceChildren(h('option', { value: '' }, docs.length ? emptyLabel : `${emptyLabel} (nenhum carregado)`), ...docs.map((d) => h('option', { value: d.id }, docLabel(d))));
+  el.value = selected || '';
+}
+const currentSel = () => ({ cv: $('m-cv').value || null, portfolio: $('m-pf').value || null, cover: $('m-cover').value || null });
+
+/** Atualiza o modal. Só troca assunto/corpo se você ainda não editou o texto. */
+function applyPrepared(first) {
   $('m-title').textContent = `${cur.job.title} — ${cur.job.company}`;
   $('m-lang').value = cur.lang;
-  $('m-to').value = cur.to;
-  $('m-subject').value = cur.subject;
-  $('m-body').value = cur.body;
-  $('m-cvname').textContent = cur.cvFile ? baseName(cur.cvFile) : '(escolha em Configurações)';
-  $('m-pfname').textContent = cur.portfolioFile ? baseName(cur.portfolioFile) : '(escolha em Configurações)';
-  $('m-note').textContent = 'Revise o texto. O rascunho vai para o seu Gmail e nada é enviado até você clicar em enviar lá.';
+  if (first) $('m-to').value = cur.to;
+  fillSelect($('m-cv'), 'cv', cur.sel.cv, 'Não anexar currículo');
+  fillSelect($('m-pf'), 'portfolio', cur.sel.portfolio, 'Não anexar portfólio');
+  fillSelect($('m-cover'), 'cover', cur.sel.cover, 'Sem cover letter');
+  const untouched = first || ($('m-subject').value === lastGenerated.subject && $('m-body').value === lastGenerated.body);
+  if (untouched) {
+    $('m-subject').value = cur.subject;
+    $('m-body').value = cur.body;
+    lastGenerated = { subject: cur.subject, body: cur.body };
+    $('m-note').textContent = cur.docs.length
+      ? 'Revise o texto e os anexos. O rascunho vai para o seu Gmail e nada é enviado até você clicar em enviar lá.'
+      : 'Nenhum documento carregado ainda. Carregue currículo e portfólio na aba Documentos.';
+  } else {
+    $('m-note').textContent = 'Anexos atualizados. Você editou o texto, então não mexi nele: confira se a frase sobre os anexos ainda bate.';
+  }
+}
+
+async function openModal(id) {
+  try { cur = await window.jh.prepare(id); } catch (e) { return fail(e); }
+  applyPrepared(true);
   $('modal').hidden = false;
 }
-const baseName = (p) => String(p).split(/[\\/]/).pop();
+async function reprepare(lang, sel) {
+  try {
+    cur = await window.jh.prepare(cur.job.id, lang, sel);
+    if (sel) await window.jh.saveJobDocs(cur.job.id, cur.lang, cur.sel);
+    applyPrepared(false);
+  } catch (e) { $('m-note').textContent = `Erro: ${errText(e)}`; }
+}
+const errText = (e) => String(e && e.message ? e.message : e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
 const closeModal = () => { $('modal').hidden = true; cur = null; };
 
-$('m-lang').addEventListener('change', () => openModal(cur.job.id, $('m-lang').value));
+$('m-lang').addEventListener('change', () => reprepare($('m-lang').value));
+['m-cv', 'm-pf', 'm-cover'].forEach((id) => $(id).addEventListener('change', () => reprepare($('m-lang').value, currentSel())));
+$('m-cover-up').addEventListener('click', async () => {
+  try {
+    const added = await window.jh.importDocs('cover', $('m-lang').value);
+    if (!added.length) return;
+    await reprepare($('m-lang').value, { ...currentSel(), cover: added[0].id });
+  } catch (e) { $('m-note').textContent = `Erro: ${errText(e)}`; }
+});
 $('m-close').addEventListener('click', closeModal);
 $('m-copy').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(`${$('m-subject').value}\n\n${$('m-body').value}`); $('m-note').textContent = 'Texto copiado.'; }
@@ -110,20 +150,63 @@ $('m-copy').addEventListener('click', async () => {
 $('m-draft').addEventListener('click', async () => {
   $('m-draft').disabled = true;
   try {
-    await window.jh.createDraft({ id: cur.job.id, lang: $('m-lang').value, to: $('m-to').value.trim(), subject: $('m-subject').value, body: $('m-body').value, attachCv: $('m-cv').checked, attachPortfolio: $('m-pf').checked });
+    await window.jh.createDraft({ id: cur.job.id, lang: $('m-lang').value, to: $('m-to').value.trim(), subject: $('m-subject').value, body: $('m-body').value, sel: currentSel() });
     $('m-note').textContent = 'Rascunho criado no Gmail. Abra a pasta Rascunhos, revise e envie.';
     await refresh();
-  } catch (e) { $('m-note').textContent = `Erro: ${String(e.message).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`; } finally { $('m-draft').disabled = false; }
+  } catch (e) { $('m-note').textContent = `Erro: ${errText(e)}`; } finally { $('m-draft').disabled = false; }
 });
 $('m-sent').addEventListener('click', async () => { await act(cur.job.id, 'enviada'); closeModal(); });
+
+/* ---------- documentos ---------- */
+const DOC_SECTIONS = [
+  { kind: 'cv', title: 'Currículos', defLang: 'pt', help: 'Tenha um em português e um em inglês. O app escolhe pelo idioma da candidatura.' },
+  { kind: 'portfolio', title: 'Portfólios', defLang: 'any', help: 'Se o portfólio serve para os dois idiomas, deixe "Qualquer idioma". Mantenha abaixo de ~15 MB para caber no e-mail com o currículo.' },
+  { kind: 'cover', title: 'Cover letters', defLang: 'en', help: 'Só vão anexas quando você escolher na candidatura. Também dá para carregar uma específica direto na tela da vaga.' },
+];
+const docsMsg = (t) => { const m = $('docs-msg'); m.textContent = t; m.hidden = !t; };
+const fmtSize = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+function langSelect(value, onchange) {
+  const s = h('select', { onchange: () => onchange(s.value) }, ...Object.entries(LANG_LABEL).map(([v, l]) => h('option', { value: v }, l)));
+  s.value = value;
+  return s;
+}
+
+async function renderDocs() {
+  const docs = await window.jh.docs();
+  const wrap = (fn) => async (...a) => { try { await fn(...a); docsMsg(''); } catch (e) { docsMsg(`Erro: ${errText(e)}`); } await renderDocs(); };
+  for (const sec of DOC_SECTIONS) {
+    let lang = sec.defLang;
+    const items = docs.filter((d) => d.kind === sec.kind);
+    $(`docs-${sec.kind}`).replaceChildren(
+      h('div', { class: 'sechead' },
+        h('h2', {}, sec.title),
+        langSelect(lang, (v) => { lang = v; }),
+        h('button', { class: 'primary', onclick: wrap(() => window.jh.importDocs(sec.kind, lang)) }, 'Carregar arquivo…')),
+      h('p', { class: 'help' }, sec.help),
+      h('div', { class: 'doclist' }, items.length ? items.map((d) => docRow(d, wrap)) : [h('p', { class: 'help' }, 'Nenhum arquivo carregado.')]));
+  }
+}
+
+function docRow(d, wrap) {
+  let armed = false;
+  const del = h('button', {
+    onclick: async () => {
+      if (!armed) { armed = true; del.textContent = 'Confirmar remoção'; setTimeout(() => { armed = false; del.textContent = 'Remover'; }, 4000); return; }
+      await wrap(() => window.jh.removeDoc(d.id))();
+    },
+  }, 'Remover');
+  return h('div', { class: 'doc' },
+    h('div', { class: 'dname', title: d.name }, d.name),
+    h('span', { class: 'dmeta' }, `${fmtSize(d.size)} · ${new Date(d.added).toLocaleDateString('pt-BR')}`),
+    langSelect(d.lang, (v) => wrap(() => window.jh.setDocLang(d.id, v))()),
+    d.kind !== 'cover' && (d.isDefault ? h('span', { class: 'badge' }, 'Padrão') : h('button', { onclick: wrap(() => window.jh.setDefaultDoc(d.id)) }, 'Usar como padrão')),
+    h('button', { onclick: wrap(() => window.jh.openDoc(d.id)) }, 'Abrir'),
+    del);
+}
 
 /* ---------- configurações ---------- */
 function field(label, input) { return h('div', { class: 'field' }, h('label', {}, label), input); }
 function text(id, value, attrs) { return h('input', { id, value: value || '', ...attrs }); }
-function fileRow(kind, label) {
-  const name = h('span', {}, cfg.files[kind] ? baseName(cfg.files[kind]) : 'nenhum arquivo escolhido');
-  return field(label, h('div', { class: 'filebtn' }, h('button', { onclick: async () => { const p = await window.jh.pickFile(kind).catch(fail); if (p) { cfg.files[kind] = p; name.textContent = baseName(p); } } }, 'Escolher PDF…'), name));
-}
 const lines = (a) => (a || []).join('\n');
 
 async function renderConfig() {
@@ -133,7 +216,6 @@ async function renderConfig() {
     field('Nome', text('p-name', p.name)), field('E-mail', text('p-email', p.email)), field('Telefone', text('p-phone', p.phone)), field('Site do portfólio', text('p-site', p.site)),
     field('Cidade (português)', text('p-city-pt', p.city.pt)), field('Cidade (inglês)', text('p-city-en', p.city.en)),
     field('Disponibilidade (português)', text('p-av-pt', p.availability.pt)), field('Disponibilidade (inglês)', text('p-av-en', p.availability.en)));
-  $('f-files').replaceChildren(fileRow('cvPt', 'Currículo em português'), fileRow('cvEn', 'Currículo em inglês'), fileRow('portfolio', 'Portfólio (PDF)'));
   const connected = h('p', { class: 'help' }, cfg.gmailConnected ? 'Gmail conectado.' : 'Gmail não conectado.');
   $('f-google').replaceChildren(
     field('Client ID', text('g-id', cfg.google.clientId)),
@@ -152,7 +234,6 @@ async function save() {
   const secret = $('g-secret').value;
   cfg = await window.jh.setConfig({
     profile: { name: $('p-name').value, email: $('p-email').value, phone: $('p-phone').value, site: $('p-site').value, city: { pt: $('p-city-pt').value, en: $('p-city-en').value }, availability: { pt: $('p-av-pt').value, en: $('p-av-en').value } },
-    files: cfg.files,
     google: { clientId: $('g-id').value.trim() },
     googleClientSecret: secret || undefined,
     companies: { greenhouse: split('c-gh'), lever: split('c-lever'), ashby: split('c-ashby'), workable: split('c-wk') },
@@ -165,9 +246,12 @@ async function save() {
 /* ---------- navegação ---------- */
 document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', async () => {
   document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === t));
-  $('view-vagas').hidden = t.dataset.view !== 'vagas';
-  $('view-config').hidden = t.dataset.view !== 'config';
-  if (t.dataset.view === 'config') await renderConfig(); else await refresh();
+  for (const v of ['vagas', 'docs', 'config']) $(`view-${v}`).hidden = t.dataset.view !== v;
+  try {
+    if (t.dataset.view === 'config') await renderConfig();
+    else if (t.dataset.view === 'docs') await renderDocs();
+    else await refresh();
+  } catch (e) { fail(e); }
 }));
 $('save').addEventListener('click', () => save().catch(fail));
 $('scan').addEventListener('click', runScan);
