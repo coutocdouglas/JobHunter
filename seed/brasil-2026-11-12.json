@@ -13,10 +13,10 @@
     "reasons": [
       "Artista 3D de arquitetura, 100% remoto, PJ e rotina flexível",
       "Projetos para o mercado imobiliário com foco em realismo",
-      "Contratação PJ, que é o seu formato"
+      "Contratação PJ"
     ],
     "warnings": [
-      "Valor de R$ 3.000/mês está bem abaixo da sua senioridade",
+      "Valor de R$ 3.000/mês é baixo para nível sênior",
       "Pipeline voltado a AR/VR (cena otimizada), não só imagem fotorrealista",
       "Num post antigo a R2U pedia CV e portfólio em jobs@r2u.io: confirme o canal no anúncio novo"
     ],
@@ -65,7 +65,7 @@
     "fit": 3,
     "reasons": [
       "Imagens 3D realistas de lançamentos imobiliários",
-      "Pede 3ds Max, Corona e pós no Photoshop: exatamente o seu fluxo"
+      "Pede 3ds Max, Corona e pós no Photoshop: fluxo clássico de ArchViz"
     ],
     "warnings": [
       "Não consegui abrir a página para ver empresa, cidade e regime",
@@ -168,7 +168,7 @@
       "Cita 3ds Max e liderança de outros artistas"
     ],
     "warnings": [
-      "Foco em Unreal Engine e animação, fora do seu fluxo principal"
+      "Foco em Unreal Engine e animação, fora do fluxo 3ds Max + Corona"
     ],
     "id": "353fa9815c67ac7c",
     "dedupeKey": "netvagas|senior3dartistunreal",

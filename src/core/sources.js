@@ -4,7 +4,7 @@ const { parseRss } = require('./rss');
 const { detectRemote } = require('./detect');
 const { isCandidate } = require('./score');
 
-const UA = 'JobHunter/0.1 (busca pessoal de vagas; github.com/coutocdouglas/JobHunter)';
+const UA = 'JobHunter/0.2 (busca pessoal de vagas; github.com/coutocdouglas/JobHunter)';
 const MIN_INTERVAL_MS = 6 * 60 * 60 * 1000; // respeita as APIs gratuitas: no máximo 1 consulta a cada 6 h por fonte
 const MAX_DESC = 4000;
 

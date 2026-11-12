@@ -15,11 +15,10 @@ async function setup() {
   return { store, studios: new Studios(store) };
 }
 
-test('seed de estúdios: todos válidos, sem duplicata, sem a Casa Digital', async () => {
+test('seed de estúdios: todos válidos e sem duplicata', async () => {
   const { studios } = await setup();
   assert.equal(studios.importMany(seed), seed.length);
   assert.equal(studios.importMany(seed), 0); // segunda importação não duplica
-  assert.ok(!seed.some((s) => /casa digital/i.test(s.name)), 'não incluir o empregador atual');
   assert.ok(studios.list({ region: 'Brasil' }).length >= 10);
   assert.ok(studios.list({ region: 'Exterior' }).length >= 10);
 });
@@ -81,7 +80,7 @@ test('abordagem espontânea: idioma pelo país, cita o estúdio e acompanha anex
   assert.equal(studioLang(ex), 'en');
   const pt = buildOutreach(br, {});
   assert.match(pt.body, /Olá, equipe Oficina3D/);
-  assert.match(pt.body, /PJ por projeto/);
+  assert.match(pt.body, /vaga fixa ou por projeto/);
   const en = buildOutreach(ex, { attach: { cv: true, portfolio: true, cover: true } });
   assert.match(en.body, /Hello Rendify team/);
   assert.match(en.body, /cover letter/);

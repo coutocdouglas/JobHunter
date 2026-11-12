@@ -1,6 +1,6 @@
 'use strict';
 const { norm } = require('./text');
-const { detectRemote, regionRestriction, matchedSkills, mentions } = require('./detect');
+const { detectRemote, regionRestriction, matchedSkills, mentions, myProfile } = require('./detect');
 
 // Os textos passam por norm(): minúsculas e sem acento ("visualização" vira "visualizacao").
 // Termos brasileiros: perspectivista, maquetista eletrônico, renderizador, visualizador, artista/generalista/designer 3D, arquiteto 3D.
@@ -13,7 +13,7 @@ const SENIOR = /(senior|sr\.?\b|lead\b|lider|supervisor|principal|art director|d
 const ARCH_CONTEXT = /arch|architect|interior|real estate|imobili|arquitet|imove|empreendimento|incorporadora|construtora|interiores/;
 
 /**
- * Aderência de 1 a 5 ao perfil do Douglas, com motivos e avisos em português.
+ * Aderência de 1 a 5 ao perfil de quem usa o app (ferramentas do currículo carregado), com motivos e avisos em português.
  * Regras simples e transparentes: nada de IA, nada de rede.
  */
 function scoreJob(job) {
@@ -38,13 +38,15 @@ function scoreJob(job) {
     warnings.push('O cargo não parece ser de ArchViz');
   }
 
+  const me = myProfile();
+  const fromCv = me.skills.length > 0;
   const skills = matchedSkills(all);
   if (skills.length >= 2) {
     pts += 1.5;
-    reasons.push(`Pede ferramentas do seu CV: ${skills.join(', ')}`);
+    reasons.push(fromCv ? `Pede ferramentas do seu currículo: ${skills.join(', ')}` : `Pede ferramentas de ArchViz: ${skills.join(', ')}`);
   } else if (skills.length === 1) {
     pts += 0.75;
-    reasons.push(`Cita ${skills[0]}, que está no seu CV`);
+    reasons.push(fromCv ? `Cita ${skills[0]}, que está no seu currículo` : `Cita ${skills[0]}`);
   }
 
   const remote = job.remote !== undefined && job.remote !== null ? job.remote : detectRemote(job.location, job.title, job.description);
@@ -68,15 +70,15 @@ function scoreJob(job) {
 
   if (SENIOR.test(title)) {
     pts += 0.5;
-    reasons.push('Nível sênior ou liderança, compatível com sua experiência');
+    reasons.push('Nível sênior ou liderança');
   }
   if (JUNIOR.test(title)) {
     pts -= 2;
     warnings.push('Vaga de nível júnior/estágio');
   }
-  if (/\b(unreal|unity)\b/.test(title)) {
+  if (/\b(unreal|unity)\b/.test(title) && !me.skills.includes('Unreal Engine')) {
     pts -= 1.5;
-    warnings.push('Foco em motor de tempo real (Unreal/Unity), fora do seu fluxo 3ds Max + Corona');
+    warnings.push(fromCv ? 'Foco em motor de tempo real (Unreal/Unity), que não está no seu currículo' : 'Foco em motor de tempo real (Unreal/Unity)');
   }
   if (BAD_TITLE.test(title)) {
     pts -= 2;
@@ -87,14 +89,15 @@ function scoreJob(job) {
   if (mentions(all, /art direction|direcao de arte|art director/)) bonus += 0.5;
   if (mentions(all, /anima(tion|cao)|fly ?through|fly ?over|video/)) bonus += 0.25;
   if (mentions(all, /\b(ai|ia)\b[- ]?(assisted|workflow|tools)|generative|comfyui|stable diffusion|midjourney|inteligencia artificial|\bia generativa/)) {
-    bonus += 0.5;
-    reasons.push('Cita fluxo com IA, que está no seu CV');
+    // Só pesa a favor se o seu currículo cita IA.
+    if (me.ai) { bonus += 0.5; reasons.push('Cita fluxo com IA, que está no seu currículo'); }
+    else warnings.push('Pede fluxo com IA');
   }
   if (mentions(all, /real estate|imobili|residential|high[- ]end|alto padrao|lancamento|incorporadora|construtora/)) {
     bonus += 0.25;
-    if (mentions(all, /imobili|alto padrao|lancamento|incorporadora|construtora/)) reasons.push('Mercado imobiliário, sua especialidade');
+    if (mentions(all, /imobili|alto padrao|lancamento|incorporadora|construtora/)) reasons.push('Mercado imobiliário');
   }
-  if (mentions(all, /\bpj\b|pessoa juridica|cnpj/)) reasons.push('Contratação PJ, que é o seu formato');
+  if (mentions(all, /\bpj\b|pessoa juridica|cnpj/)) reasons.push('Contratação PJ');
   pts += Math.min(bonus, 1);
 
   const fit = pts >= 6 ? 5 : pts >= 4.5 ? 4 : pts >= 3 ? 3 : pts >= 1.5 ? 2 : 1;

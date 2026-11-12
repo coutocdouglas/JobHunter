@@ -8,6 +8,8 @@ const { runAll } = require('../core/sources');
 const { buildApplication, buildOutreach, studioLang } = require('../core/templates');
 const { Studios, STUDIO_STATUSES, mergeBoards } = require('../core/studios');
 const gmail = require('../core/gmail');
+const { setMyProfile } = require('../core/detect');
+const { extractPdfText, profileFromText, mergeProfile, KNOWN_TOOLS } = require('../core/cvparse');
 const { Library, KINDS, LANGS } = require('../core/library');
 const cfgmod = require('./config');
 
@@ -84,6 +86,12 @@ function prepareStudio(id, lang, sel) {
   return { ...t, lang: l, to: s.email || '', sel: chosen, docs: library.list(), job: { kind: 'studio', id: s.id, title: 'Candidatura espontânea', company: s.name, url: s.site || s.careersUrl } };
 }
 
+/** Aplica o perfil na nota de aderência e recalcula as vagas vindas da busca. */
+function applyProfile() {
+  setMyProfile(config.profile);
+  store.rescore();
+}
+
 /* Versões antigas guardavam só o caminho dos PDFs; traz esses arquivos para a biblioteca uma única vez. */
 function migrateOldFiles() {
   const f = config.files || {};
@@ -142,13 +150,14 @@ function registerIpc() {
     return { emails: htmls.length, found: found.length, added: store.upsertJobs(found) };
   });
 
-  ipcMain.handle('config:get', () => ({ ...config, gmailConnected: !!getGmail(), hasClientSecret: !!readSecrets().clientSecret }));
+  ipcMain.handle('config:get', () => ({ ...config, knownTools: KNOWN_TOOLS.map((k) => k.key), gmailConnected: !!getGmail(), hasClientSecret: !!readSecrets().clientSecret }));
   ipcMain.handle('config:set', (_e, input) => {
     config = cfgmod.sanitize(input, config);
     cfgmod.save(cfgFile, config);
+    applyProfile();
     if (input && input.googleClientSecret) writeSecrets({ ...readSecrets(), clientSecret: String(input.googleClientSecret).slice(0, 200) });
     gmailClient = null;
-    return { ...config, gmailConnected: !!getGmail(), hasClientSecret: !!readSecrets().clientSecret };
+    return { ...config, knownTools: KNOWN_TOOLS.map((k) => k.key), gmailConnected: !!getGmail(), hasClientSecret: !!readSecrets().clientSecret };
   });
   /* ---------- biblioteca de documentos ---------- */
   ipcMain.handle('docs:list', () => library.list());
@@ -156,8 +165,22 @@ function registerIpc() {
     need(KINDS.includes(kind), 'Tipo de documento inválido.');
     need(LANGS.includes(lang), 'Idioma inválido.');
     const r = await dialog.showOpenDialog(win, { properties: ['openFile', 'multiSelections'], filters: [{ name: 'PDF ou Word', extensions: ['pdf', 'docx', 'doc'] }] });
-    if (r.canceled) return [];
-    return r.filePaths.map((p) => library.import(p, { kind, lang }));
+    if (r.canceled) return { docs: [], filled: [] };
+    const docs = r.filePaths.map((p) => library.import(p, { kind, lang }));
+    // Currículo em PDF: preenche o perfil com o que der para ler (sem sobrescrever o que você já preencheu).
+    let filled = [];
+    if (kind === 'cv') {
+      for (const p of r.filePaths.filter((f) => /\.pdf$/i.test(f))) {
+        try {
+          const found = profileFromText(await extractPdfText(p), lang === 'en' ? 'en' : 'pt');
+          const m = mergeProfile(config.profile, found);
+          filled = [...new Set([...filled, ...m.filled])];
+          config = cfgmod.sanitize({ profile: m.profile }, config);
+        } catch { /* PDF sem texto (escaneado): segue sem preencher */ }
+      }
+      if (filled.length) { cfgmod.save(cfgFile, config); applyProfile(); }
+    }
+    return { docs, filled };
   });
   ipcMain.handle('docs:remove', (_e, id) => library.remove(String(id)));
   ipcMain.handle('docs:default', (_e, id) => library.setDefault(String(id)));
@@ -251,6 +274,7 @@ if (!app.requestSingleInstanceLock()) {
     cfgFile = path.join(dir, 'config.json');
     secretsFile = path.join(dir, 'secrets.bin');
     config = cfgmod.load(cfgFile);
+    setMyProfile(config.profile);
     store = await Store.open(path.join(dir, 'jobhunter.sqlite'));
     library = new Library(store, path.join(dir, 'documentos'));
     studios = new Studios(store);

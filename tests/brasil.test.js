@@ -51,7 +51,7 @@ test('estágio é rebaixado mesmo com termo de ArchViz', () => {
 test('detectRemote em português', () => {
   assert.equal(detectRemote('100% home office'), true);
   assert.equal(detectRemote('Vaga remota'), true);
-  assert.equal(detectRemote('Belo Horizonte, MG', 'Presencial'), false);
+  assert.equal(detectRemote('Recife, PE', 'Presencial'), false);
   assert.equal(detectRemote('Remoto ou híbrido'), null);
 });
 
@@ -86,13 +86,13 @@ test('Gupy entra na busca com todos os termos brasileiros, usa o endereço real 
 test('Gupy real: on-site/hybrid não são remotos e cidade vazia vira Brasil', () => {
   const [a, b] = src.normalizeGupy({ data: [
     { id: 1, name: 'Arquiteto(a) 3D', careerPageName: 'X', workplaceType: 'remote', city: '', state: '', jobUrl: 'https://x.gupy.io/job/abc?jobBoardSource=gupy_portal', publishedDate: '2026-11-12T20:01:25.944Z' },
-    { id: 2, name: 'Visualizador 3D', careerPageName: 'Y', workplaceType: 'hybrid', city: 'Belo Horizonte', state: 'Minas Gerais', jobUrl: 'https://y.gupy.io/job/def' },
+    { id: 2, name: 'Visualizador 3D', careerPageName: 'Y', workplaceType: 'hybrid', city: 'Recife', state: 'Pernambuco', jobUrl: 'https://y.gupy.io/job/def' },
   ], pagination: { total: 2 } });
   assert.equal(a.remote, true);
   assert.equal(a.location, 'Remoto (Brasil)');
   assert.equal(src.finalize(a).url, 'https://x.gupy.io/job/abc');
   assert.equal(b.remote, false);
-  assert.equal(b.location, 'Belo Horizonte, Minas Gerais (Brasil)');
+  assert.equal(b.location, 'Recife, Pernambuco (Brasil)');
   assert.equal(src.buildTasks({ gupy: false }, fetch).filter((t) => t.key.startsWith('gupy:')).length, 0);
 });
 

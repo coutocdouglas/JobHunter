@@ -51,7 +51,12 @@ async function act(id, status) {
   try { await window.jh.setStatus(id, status); await refresh(); } catch (e) { fail(e); }
 }
 
+let onboarded = null;
 async function refresh() {
+  if (onboarded === null) {
+    try { const c = await window.jh.getConfig(); onboarded = !!(c.profile && c.profile.name); } catch { onboarded = true; }
+    $('onboard').hidden = onboarded;
+  }
   const { jobs, counts } = await window.jh.list({ text: $('q').value, region: $('reg').value, status: $('st').value, minFit: Number($('fit').value) });
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   $('stats').replaceChildren(
@@ -144,7 +149,7 @@ $('m-lang').addEventListener('change', () => reprepare($('m-lang').value));
 ['m-cv', 'm-pf', 'm-cover'].forEach((id) => $(id).addEventListener('change', () => reprepare($('m-lang').value, currentSel())));
 $('m-cover-up').addEventListener('click', async () => {
   try {
-    const added = await window.jh.importDocs('cover', $('m-lang').value);
+    const { docs: added } = await window.jh.importDocs('cover', $('m-lang').value);
     if (!added.length) return;
     await reprepare($('m-lang').value, { ...currentSel(), cover: added[0].id });
   } catch (e) { $('m-note').textContent = `Erro: ${errText(e)}`; }
@@ -238,6 +243,18 @@ function langSelect(value, onchange) {
   return s;
 }
 
+const FIELD_LABEL = { name: 'nome', email: 'e-mail', phone: 'telefone', site: 'site', years: 'anos de experiência', 'headline.pt': 'cargo (português)', 'headline.en': 'cargo (inglês)', 'city.pt': 'cidade (português)', 'city.en': 'cidade (inglês)', skills: 'ferramentas', ai: 'uso de IA', animation: 'animação' };
+async function importDoc(kind, lang) {
+  try {
+    const { docs, filled } = await window.jh.importDocs(kind, lang);
+    if (filled.length) onboarded = null;
+    await renderDocs();
+    if (filled.length) docsMsg(`Li o currículo e preenchi seu perfil: ${filled.map((f) => FIELD_LABEL[f] || f).join(', ')}. Confira em Configurações e escreva lá o parágrafo de destaques.`);
+    else if (kind === 'cv' && docs.length) docsMsg('Currículo carregado. Não preenchi nada novo no perfil (ou já estava preenchido, ou o PDF não tem texto). Confira em Configurações.');
+    else docsMsg('');
+  } catch (e) { docsMsg(`Erro: ${errText(e)}`); await renderDocs(); }
+}
+
 async function renderDocs() {
   const docs = await window.jh.docs();
   const wrap = (fn) => async (...a) => { try { await fn(...a); docsMsg(''); } catch (e) { docsMsg(`Erro: ${errText(e)}`); } await renderDocs(); };
@@ -248,7 +265,7 @@ async function renderDocs() {
       h('div', { class: 'sechead' },
         h('h2', {}, sec.title),
         langSelect(lang, (v) => { lang = v; }),
-        h('button', { class: 'primary', onclick: wrap(() => window.jh.importDocs(sec.kind, lang)) }, 'Carregar arquivo…')),
+        h('button', { class: 'primary', onclick: () => importDoc(sec.kind, lang) }, 'Carregar arquivo…')),
       h('p', { class: 'help' }, sec.help),
       h('div', { class: 'doclist' }, items.length ? items.map((d) => docRow(d, wrap)) : [h('p', { class: 'help' }, 'Nenhum arquivo carregado.')]));
   }
@@ -282,7 +299,16 @@ async function renderConfig() {
   $('f-profile').replaceChildren(
     field('Nome', text('p-name', p.name)), field('E-mail', text('p-email', p.email)), field('Telefone', text('p-phone', p.phone)), field('Site do portfólio', text('p-site', p.site)),
     field('Cidade (português)', text('p-city-pt', p.city.pt)), field('Cidade (inglês)', text('p-city-en', p.city.en)),
-    field('Disponibilidade (português)', text('p-av-pt', p.availability.pt)), field('Disponibilidade (inglês)', text('p-av-en', p.availability.en)));
+    field('Cargo, como vai na frase "Sou…" (português)', text('p-hl-pt', p.headline && p.headline.pt, { placeholder: 'ex.: arquiteto e artista 3D' })),
+    field('Cargo, como vai na frase "I am a…" (inglês)', text('p-hl-en', p.headline && p.headline.en, { placeholder: 'ex.: architect and 3D artist' })),
+    field('Anos de experiência', text('p-years', p.years || '', { type: 'number', min: 1, max: 60 })),
+    field('Disponibilidade (português)', text('p-av-pt', p.availability.pt)), field('Disponibilidade (inglês)', text('p-av-en', p.availability.en)),
+    field('Destaques (português) — parágrafo com suas principais conquistas, entra em todos os e-mails', h('textarea', { id: 'p-hi-pt', rows: 3 }, (p.highlights && p.highlights.pt) || '')),
+    field('Destaques (inglês)', h('textarea', { id: 'p-hi-en', rows: 3 }, (p.highlights && p.highlights.en) || '')),
+    field('Ferramentas que você domina (usadas na nota e nos e-mails)', h('div', { class: 'chips', id: 'p-skills' },
+      ...(cfg.knownTools || []).map((t) => h('label', { class: 'check' }, h('input', { type: 'checkbox', value: t, checked: (p.skills || []).includes(t) }), ` ${t}`)))),
+    h('label', { class: 'check' }, h('input', { type: 'checkbox', id: 'p-ai', checked: !!p.ai }), ' Uso IA no meu processo de trabalho'),
+    h('label', { class: 'check' }, h('input', { type: 'checkbox', id: 'p-anim', checked: !!p.animation }), ' Produzo vídeos e animações'));
   const connected = h('p', { class: 'help' }, cfg.gmailConnected ? 'Gmail conectado.' : 'Gmail não conectado.');
   $('f-google').replaceChildren(
     field('Client ID', text('g-id', cfg.google.clientId)),
@@ -302,13 +328,24 @@ const split = (id) => $(id).value.split(/\r?\n/).map((s) => s.trim()).filter(Boo
 async function save() {
   const secret = $('g-secret').value;
   cfg = await window.jh.setConfig({
-    profile: { name: $('p-name').value, email: $('p-email').value, phone: $('p-phone').value, site: $('p-site').value, city: { pt: $('p-city-pt').value, en: $('p-city-en').value }, availability: { pt: $('p-av-pt').value, en: $('p-av-en').value } },
+    profile: {
+      name: $('p-name').value, email: $('p-email').value, phone: $('p-phone').value, site: $('p-site').value,
+      city: { pt: $('p-city-pt').value, en: $('p-city-en').value },
+      headline: { pt: $('p-hl-pt').value, en: $('p-hl-en').value },
+      years: $('p-years').value,
+      availability: { pt: $('p-av-pt').value, en: $('p-av-en').value },
+      highlights: { pt: $('p-hi-pt').value, en: $('p-hi-en').value },
+      skills: [...document.querySelectorAll('#p-skills input:checked')].map((i) => i.value),
+      ai: $('p-ai').checked, animation: $('p-anim').checked,
+    },
     google: { clientId: $('g-id').value.trim() },
     googleClientSecret: secret || undefined,
     companies: { greenhouse: split('c-gh'), lever: split('c-lever'), ashby: split('c-ashby'), workable: split('c-wk') },
     adzuna: { appId: $('a-id').value.trim(), appKey: $('a-key').value.trim() },
     gupy: $('br-gupy').checked,
   });
+  onboarded = !!(cfg.profile && cfg.profile.name);
+  $('onboard').hidden = onboarded;
   $('saved').textContent = 'Salvo.';
   setTimeout(() => { $('saved').textContent = ''; }, 2500);
 }

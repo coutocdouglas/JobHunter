@@ -43,7 +43,9 @@ A aba **Documentos** é a biblioteca de onde saem todos os anexos.
 
 ## Primeiros passos
 
-1. Em **Documentos**, carregue o currículo em português, o em inglês e o portfólio. Em **Configurações**, confira seus dados.
+1. Em **Documentos**, carregue o currículo em português, o em inglês e o portfólio. Ao carregar um currículo em PDF, o app lê seu nome, e-mail, telefone, site, cidade, cargo, anos de experiência e ferramentas e preenche o perfil (sem sobrescrever o que você já escreveu). Em **Configurações**, confira e escreva o parágrafo de **destaques**, que entra em todos os e-mails.
+
+Nenhum dado pessoal fica no código: tudo vem do seu currículo e das Configurações, e fica só no seu computador.
 2. **Gmail** (necessário só para criar rascunhos e importar alertas):
    - No [Google Cloud Console](https://console.cloud.google.com/), crie um projeto e ative a **Gmail API**.
    - Em *Tela de consentimento OAuth*, tipo **Externo**, e publique o app em **Produção** (uso pessoal, sem verificação). Em modo "Teste", o login expira em 7 dias.

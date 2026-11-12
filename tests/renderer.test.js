@@ -53,7 +53,7 @@ async function boot() {
       return { ...t, lang: l, to: j.email || '', sel: chosen, docs: lib.list(), job: { id: j.id, title: j.title, company: j.company, url: j.url } };
     },
     saveJobDocs: async (id, lang, sel) => store.setJobDocs(id, { lang, ...sel }),
-    importDocs: async (kind, lang) => [lib.import(nextCover, { kind, lang })],
+    importDocs: async (kind, lang) => ({ docs: [lib.import(nextCover, { kind, lang })], filled: [] }),
     docs: async () => lib.list(),
     createDraft: async (p) => { drafts.push(p); store.setStatus(p.id, 'rascunho'); return { id: 'd1' }; },
     open: async () => {}, getConfig: async () => ({ profile: { city: {}, availability: {} }, files: {}, google: {}, companies: {}, adzuna: {} }),

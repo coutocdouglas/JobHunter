@@ -135,6 +135,18 @@ class Store {
     this.save();
   }
 
+  /** Recalcula a nota das vagas que vieram da busca (as curadas à mão mantêm a nota). */
+  rescore() {
+    const rows = this._all('SELECT * FROM jobs WHERE curated = 0');
+    for (const r of rows) {
+      const j = rowToJob(r);
+      const sc = scoreJob(j);
+      this.db.run('UPDATE jobs SET fit = ?, reasons = ?, warnings = ? WHERE id = ?', [sc.fit, JSON.stringify(sc.reasons), JSON.stringify(sc.warnings), j.id]);
+    }
+    this.save();
+    return rows.length;
+  }
+
   /** Guarda quais documentos (currículo, portfólio, cover letter) foram escolhidos para a vaga. */
   setJobDocs(id, docs) {
     this.db.run('UPDATE jobs SET docs = ?, updated = ? WHERE id = ?', [docs ? JSON.stringify(docs) : null, new Date().toISOString(), id]);

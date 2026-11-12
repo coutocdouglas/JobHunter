@@ -20,14 +20,14 @@ async function setup() {
 
 test('importa copiando o arquivo e o primeiro de cada idioma vira padrão', async () => {
   const { lib, src } = await setup();
-  const orig = file(src, 'CV_DOUGLAS_COUTO_PT.pdf');
+  const orig = file(src, 'CV_ANA_TESTE_PT.pdf');
   const a = lib.import(orig, { kind: 'cv', lang: 'pt' });
   const b = lib.import(file(src, 'CV_v2_PT.pdf'), { kind: 'cv', lang: 'pt' });
   const c = lib.import(file(src, 'CV_EN.pdf'), { kind: 'cv', lang: 'en' });
   assert.equal(a.isDefault, true);
   assert.equal(b.isDefault, false);
   assert.equal(c.isDefault, true);
-  assert.equal(a.name, 'CV_DOUGLAS_COUTO_PT.pdf');
+  assert.equal(a.name, 'CV_ANA_TESTE_PT.pdf');
   fs.unlinkSync(orig); // apagar o original não afeta a cópia
   assert.ok(fs.existsSync(lib.pathOf(a)));
 });
@@ -88,7 +88,8 @@ test('texto do e-mail acompanha os anexos escolhidos', () => {
   assert.match(buildApplication(job, { lang: 'en', attach: { cv: true, portfolio: true, cover: true } }).body, /My CV, my portfolio and a cover letter are attached/);
   assert.match(buildApplication(job, { lang: 'en', attach: { cv: true } }).body, /My CV is attached/);
   assert.match(buildApplication(job, { lang: 'pt', attach: { cv: true, cover: true } }).body, /Envio em anexo meu currículo e minha carta de apresentação/);
-  assert.match(buildApplication(job, { lang: 'pt', attach: {} }).body, /Meus trabalhos estão em/);
+  assert.match(buildApplication(job, { lang: 'pt', profile: { site: 'meuportfolio.com' }, attach: {} }).body, /Meus trabalhos estão em meuportfolio\.com/);
+  assert.doesNotMatch(buildApplication(job, { lang: 'pt', attach: {} }).body, /Meus trabalhos/);
 });
 
 test('escolha de documentos fica salva na vaga', async () => {

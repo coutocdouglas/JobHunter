@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const { detectRemote, regionRestriction, matchedSkills } = require('../src/core/detect');
+const { detectRemote, regionRestriction, matchedSkills, setMyProfile } = require('../src/core/detect');
 const { scoreJob, isCandidate } = require('../src/core/score');
 const { parseRss } = require('../src/core/rss');
 const src = require('../src/core/sources');
@@ -18,7 +18,7 @@ const { canonicalUrl } = require('../src/core/text');
 
 test('detectRemote', () => {
   assert.equal(detectRemote('Remote', 'Archviz Artist'), true);
-  assert.equal(detectRemote('Belo Horizonte', 'Visualizador 3D presencial'), false);
+  assert.equal(detectRemote('Recife', 'Visualizador 3D presencial'), false);
   assert.equal(detectRemote('Remote or hybrid'), null);
   assert.equal(detectRemote('', 'Fully remote 3D Artist'), true);
   assert.equal(detectRemote('Dallas, TX', '3D Artist'), null);
@@ -31,8 +31,11 @@ test('regionRestriction respeita vagas abertas ao Brasil/LATAM', () => {
   assert.equal(regionRestriction('US only, but LATAM contractors are welcome'), null);
 });
 
-test('matchedSkills só devolve ferramentas do currículo (sem V-Ray)', () => {
+test('matchedSkills usa as ferramentas do perfil; sem perfil, usa as genéricas de ArchViz', () => {
+  setMyProfile({ skills: ['3ds Max', 'Corona Renderer', 'Photoshop'] });
   assert.deepEqual(matchedSkills('3ds Max, V-Ray and Corona, Photoshop'), ['3ds Max', 'Corona Renderer', 'Photoshop']);
+  setMyProfile({});
+  assert.deepEqual(matchedSkills('3ds Max, V-Ray and Corona, Photoshop'), ['3ds Max', 'Corona Renderer', 'V-Ray', 'Photoshop']);
 });
 
 test('scoreJob: vaga boa x vaga ruim', () => {
@@ -112,27 +115,28 @@ test('Store persiste em arquivo', async () => {
   assert.equal(s2.list().length, 1);
 });
 
-test('templates: PT/EN e só cita ferramentas do currículo', () => {
+test('templates: PT/EN e só cita ferramentas do perfil', () => {
   const job = { title: 'Archviz Artist', company: 'Acme', location: 'Remote', source: 'X', description: 'We use 3ds Max, V-Ray and Corona. Animation and flythrough.' };
-  const en = buildApplication(job, {});
+  const profile = { name: 'Ana Teste', skills: ['3ds Max', 'Corona Renderer', 'Photoshop'], animation: true };
+  const en = buildApplication(job, { profile });
   assert.equal(en.lang, 'en');
-  assert.match(en.body, /3ds Max, Corona Renderer/);
+  assert.match(en.body, /3ds Max and Corona Renderer/);
   assert.doesNotMatch(en.body, /V-Ray/);
   assert.match(en.body, /animations/);
-  const pt = buildApplication({ ...job, location: 'Brasil' }, {});
+  const pt = buildApplication({ ...job, location: 'Brasil' }, { profile });
   assert.equal(pt.lang, 'pt');
   assert.match(pt.subject, /Candidatura/);
 });
 
 test('buildRawMessage gera MIME válido com anexo e assunto acentuado', () => {
-  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jh-')), 'CV Douglas.pdf');
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'jh-')), 'CV Ana.pdf');
   fs.writeFileSync(f, Buffer.from('%PDF-1.4 teste'));
   const raw = gmail.buildRawMessage({ to: 'a@b.com', subject: 'Candidatura: visualização', body: 'Olá, ação!', attachments: [{ path: f }] });
   const mime = Buffer.from(raw, 'base64url').toString('utf8');
   assert.match(mime, /^To: a@b\.com/);
   assert.match(mime, /Subject: =\?UTF-8\?B\?/);
   assert.match(mime, /application\/pdf/);
-  assert.match(mime, /filename="CV Douglas\.pdf"/);
+  assert.match(mime, /filename="CV Ana\.pdf"/);
   assert.ok(mime.trimEnd().endsWith('--'));
   // injeção de cabeçalho não passa
   const evil = Buffer.from(gmail.buildRawMessage({ to: 'a@b.com\r\nBcc: x@y.com', subject: 's', body: 'b' }), 'base64url').toString('utf8');

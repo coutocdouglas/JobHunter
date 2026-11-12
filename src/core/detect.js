@@ -1,15 +1,18 @@
 'use strict';
 const { norm } = require('./text');
 
-// Ferramentas que constam no currículo do Douglas. Não inclua V-Ray aqui: não está no CV.
-const MY_SKILLS = [
-  { key: '3ds Max', re: /\b3\s?ds\s?max\b/ },
-  { key: 'Corona Renderer', re: /\bcorona\b/ },
-  { key: 'Photoshop', re: /\bphotoshop\b/ },
-  { key: 'SketchUp', re: /\bsketch\s?up\b/ },
-  { key: 'AutoCAD', re: /\bautocad\b/ },
-  { key: 'Archicad', re: /\barchicad\b/ },
-];
+const { KNOWN_TOOLS } = require('./cvparse');
+
+// Perfil de quem usa o app: ferramentas e uso de IA vêm do currículo carregado (ou das Configurações).
+// Sem perfil, a nota usa um conjunto genérico de ferramentas de ArchViz e não promete nada no e-mail.
+const GENERIC_TOOLS = ['3ds Max', 'Corona Renderer', 'V-Ray', 'Photoshop', 'SketchUp', 'Blender', 'Unreal Engine', 'Lumion', 'Enscape', 'D5 Render'];
+const state = { skills: [], ai: false };
+
+function setMyProfile(profile = {}) {
+  state.skills = Array.isArray(profile.skills) ? profile.skills.filter((s) => KNOWN_TOOLS.some((k) => k.key === s)) : [];
+  state.ai = profile.ai === true;
+}
+const myProfile = () => ({ skills: [...state.skills], ai: state.ai });
 
 const ONSITE_RE = /\b(on[- ]?site|onsite|in[- ]office|presencial|hibrido|hybrid|in the office|office[- ]based)\b/;
 const REMOTE_RE = /\b(remote|remoto|remota|home ?office|work from home|wfh|anywhere|worldwide|teletrabalho|trabalho a distancia|100% remot)/;
@@ -50,13 +53,15 @@ function regionRestriction(...texts) {
   return null;
 }
 
-function matchedSkills(text) {
+/** Ferramentas da lista (padrão: as do perfil, ou as genéricas se não houver perfil) que aparecem no texto. */
+function matchedSkills(text, skills) {
+  const list = skills || (state.skills.length ? state.skills : GENERIC_TOOLS);
   const t = norm(text);
-  return MY_SKILLS.filter((s) => s.re.test(t)).map((s) => s.key);
+  return KNOWN_TOOLS.filter((k) => list.includes(k.key) && k.re.test(t)).map((k) => k.key);
 }
 
 function mentions(text, re) {
   return re.test(norm(text));
 }
 
-module.exports = { MY_SKILLS, detectRemote, regionRestriction, matchedSkills, mentions };
+module.exports = { GENERIC_TOOLS, setMyProfile, myProfile, detectRemote, regionRestriction, matchedSkills, mentions };
