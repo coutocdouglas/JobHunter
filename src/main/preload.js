@@ -4,6 +4,10 @@ const { contextBridge, ipcRenderer } = require('electron');
 const call = (ch) => (...a) => ipcRenderer.invoke(ch, ...a);
 
 contextBridge.exposeInMainWorld('jh', {
+  envState: call('env:state'),
+  envCreate: call('env:create'),
+  envOpen: call('env:open'),
+  envHome: call('env:home'),
   list: call('jobs:list'),
   setStatus: call('jobs:status'),
   setNote: call('jobs:note'),

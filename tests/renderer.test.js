@@ -11,12 +11,13 @@ const { Library } = require('../src/core/library');
 const { Studios } = require('../src/core/studios');
 const { buildApplication, buildOutreach, studioLang } = require('../src/core/templates');
 const { finalize } = require('../src/core/sources');
+const { countryOf } = require('../src/core/country');
 
 const root = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'src/renderer/index.html'), 'utf8').replace(/<script src="app.js"><\/script>/, '');
 const appJs = fs.readFileSync(path.join(root, 'src/renderer/app.js'), 'utf8');
 
-async function boot() {
+async function boot(opts = {}) {
   const store = await Store.open(null);
   store.upsertJobs(JSON.parse(fs.readFileSync(path.join(root, 'seed/painel-2026-11-12.json'), 'utf8')));
   store.upsertJobs([finalize({ source: 'T', title: '<img src=x onerror=alert(1)> Archviz Artist', company: '<b>Evil</b>', location: 'Remote', remote: true, url: 'https://x/evil', description: '3ds Max Corona', posted: null, salary: null, email: null })]);
@@ -30,7 +31,15 @@ async function boot() {
   const drafts = [];
   const studios = new Studios(store);
   studios.importMany(require('../seed/estudios/estudios-2026-11-12.json'));
+  const archviz = { id: 'archviz', name: 'ArchViz remoto', terms: ['artista 3d'], preset: 'archviz', lastOpened: null };
+  const interiores = { id: 'interiores', name: 'Interiores', terms: ['designer de interiores'], preset: '', lastOpened: null };
+  const envLog = [];
+  let active = opts.home ? null : archviz;
   const jh = {
+    envState: async () => ({ envs: [archviz, interiores], active }),
+    envOpen: async (id) => { envLog.push(id); active = [archviz, interiores].find((e) => e.id === id) || { id, name: id, terms: [], preset: '' }; return active; },
+    envHome: async () => { active = null; return true; },
+    envCreate: async (i) => ({ id: 'novo', name: i.name, terms: String(i.terms).split(','), preset: '', lastOpened: null }),
     studios: async (q) => ({ studios: studios.list({ status: q.status || undefined, region: q.region, text: q.text }), counts: studios.counts() }),
     addStudio: async (i) => studios.add(i),
     updateStudio: async (id, f) => studios.update(id, f),
@@ -43,7 +52,7 @@ async function boot() {
       return { ...t, lang: l, to: s.email || '', sel: chosen, docs: lib.list(), job: { kind: 'studio', id: s.id, title: 'Candidatura espontânea', company: s.name, url: s.site } };
     },
     saveStudioDocs: async (id, lang, sel) => studios.setDocs(id, { lang, ...sel }),
-    list: async (q) => ({ jobs: store.list({ status: q.status || undefined, minFit: q.minFit, region: q.region, text: q.text }), counts: store.counts() }),
+    list: async (q) => ({ jobs: store.list({ status: q.status || undefined, minFit: q.minFit, region: q.region, text: q.text }).map((j) => ({ ...j, country: countryOf(j.location) })), counts: store.counts() }),
     setStatus: async (id, s) => { store.setStatus(id, s); return store.counts(); },
     prepare: async (id, lang, sel) => {
       const j = store.get(id);
@@ -62,7 +71,7 @@ async function boot() {
   dom.window.jh = jh;
   dom.window.eval(appJs);
   await new Promise((r) => setTimeout(r, 50));
-  return { dom, doc: dom.window.document, drafts, store, lib, studios };
+  return { dom, doc: dom.window.document, drafts, store, lib, studios, envLog };
 }
 const tick = () => new Promise((r) => setTimeout(r, 60));
 
@@ -70,7 +79,8 @@ test('renderiza cartões e nunca interpreta HTML vindo de vagas', async () => {
   const { doc } = await boot();
   const cards = doc.querySelectorAll('.card');
   assert.ok(cards.length >= 10);
-  assert.equal(doc.querySelector('.card img'), null); // o <img> malicioso virou texto
+  assert.equal(doc.querySelector('.card .title img, .card .co img'), null); // o <img> malicioso virou texto
+  assert.ok([...doc.querySelectorAll('.card img')].every((i) => i.classList.contains('flag') && i.src.startsWith('data:image/svg+xml'))); // só as bandeiras são imagem
   assert.ok([...doc.querySelectorAll('.title')].some((t) => t.textContent.includes('<img src=x')));
 });
 
@@ -177,4 +187,53 @@ test('adicionar estúdio pelo formulário', async () => {
   await tick();
   assert.ok(studios.list().some((x) => x.name === 'Estúdio Novo' && x.ats === 'lever'));
   assert.equal(doc.getElementById('s-form').hidden, true);
+});
+
+test('sem ambiente aberto, mostra a página inicial com uma janela por ambiente', async () => {
+  const { doc } = await boot({ home: true });
+  assert.equal(doc.getElementById('view-home').hidden, false);
+  assert.equal(doc.getElementById('view-vagas').hidden, true);
+  assert.equal(doc.getElementById('tabs').hidden, true);
+  const tiles = [...doc.querySelectorAll('#home-grid .tile')];
+  assert.equal(tiles.length, 3); // dois ambientes + "Novo ambiente"
+  assert.match(tiles[0].textContent, /ArchViz remoto/);
+});
+
+test('clicar na janela abre o ambiente; o seletor troca e o botão volta à página inicial', async () => {
+  const { doc, dom, envLog } = await boot({ home: true });
+  doc.querySelectorAll('#home-grid .tile')[1].click();
+  await tick();
+  assert.deepEqual(envLog, ['interiores']);
+  assert.equal(doc.getElementById('view-vagas').hidden, false);
+  assert.equal(doc.getElementById('env-switch').value, 'interiores');
+  assert.equal(doc.getElementById('fit').value, '1'); // ambiente novo mostra todas as vagas
+  const sw = doc.getElementById('env-switch');
+  sw.value = 'archviz';
+  sw.dispatchEvent(new dom.window.Event('change'));
+  await tick();
+  assert.deepEqual(envLog, ['interiores', 'archviz']);
+  assert.equal(doc.getElementById('fit').value, '3');
+  doc.getElementById('env-home').click();
+  await tick();
+  assert.equal(doc.getElementById('view-home').hidden, false);
+});
+
+test('criar ambiente pelo formulário abre o ambiente novo', async () => {
+  const { doc, dom, envLog } = await boot({ home: true });
+  doc.querySelector('#home-grid .tile.new').click();
+  assert.equal(doc.getElementById('env-form').hidden, false);
+  doc.getElementById('env-name').value = 'Novo';
+  doc.getElementById('env-terms').value = 'a, b';
+  doc.getElementById('env-form').dispatchEvent(new dom.window.Event('submit', { cancelable: true }));
+  await tick();
+  assert.deepEqual(envLog, ['novo']);
+});
+
+test('o cartão mostra o local em destaque, com bandeira e país quando identificado', async () => {
+  const { doc } = await boot();
+  const locs = [...doc.querySelectorAll('.card .loc')];
+  assert.ok(locs.length > 0);
+  const withCountry = locs.find((l) => l.querySelector('.ctry'));
+  assert.ok(withCountry, 'ao menos uma vaga do seed tem país identificado');
+  assert.ok(withCountry.querySelector('.flag'));
 });

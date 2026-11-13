@@ -10,18 +10,36 @@
 <body>
 <header class="top">
   <h1>JobHunter</h1>
-  <nav>
+  <div id="env-bar" class="envbar" hidden>
+    <button id="env-home" title="Voltar à página inicial">&larr; Ambientes</button>
+    <select id="env-switch" aria-label="Trocar de ambiente"></select>
+  </div>
+  <nav id="tabs" hidden>
     <button class="tab on" data-view="vagas">Vagas</button>
     <button class="tab" data-view="studios">Estúdios</button>
     <button class="tab" data-view="docs">Documentos</button>
     <button class="tab" data-view="config">Configurações</button>
   </nav>
   <div class="spacer"></div>
-  <button id="scan" class="primary">Buscar vagas agora</button>
-  <button id="alerts">Importar alertas do LinkedIn</button>
+  <button id="scan" class="primary" hidden>Buscar vagas agora</button>
+  <button id="alerts" hidden>Importar alertas do LinkedIn</button>
 </header>
 
-<main id="view-vagas">
+<main id="view-home" hidden>
+  <h2>Seus ambientes de procura</h2>
+  <p class="help">Cada ambiente é um espaço separado, com os próprios tipos de vaga, vagas encontradas, currículos, portfólios e configurações. Clique em um para abrir.</p>
+  <div id="home-msg" class="msg" hidden></div>
+  <div class="grid" id="home-grid"></div>
+  <form id="env-form" class="card form" hidden>
+    <h3 class="title">Novo ambiente de procura</h3>
+    <div class="field"><label for="env-name">Nome do ambiente *</label><input id="env-name" required maxlength="60" placeholder="ex.: Design de interiores"></div>
+    <div class="field"><label for="env-terms">Que vagas você quer buscar? Separe os nomes por vírgula *</label><input id="env-terms" required placeholder="ex.: designer de interiores, interior designer, decorador"></div>
+    <p class="help">Esses nomes viram os termos de busca nas fontes (Gupy, Adzuna e as páginas de carreiras dos estúdios). Use os nomes que as empresas usam nos anúncios, em português e em inglês.</p>
+    <div class="actions"><button type="submit" class="primary">Criar e abrir</button><button type="button" id="env-cancel">Cancelar</button></div>
+  </form>
+</main>
+
+<main id="view-vagas" hidden>
   <div id="onboard" class="msg" hidden><b>Primeiro passo:</b> carregue seu currículo (PDF) na aba <b>Documentos</b>. O app lê seu nome, contato, cargo, anos de experiência e ferramentas para montar os e-mails e calcular a aderência. Depois confira e complete em <b>Configurações</b>.</div>
   <div class="stats" id="stats"></div>
   <div class="bar">

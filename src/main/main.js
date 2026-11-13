@@ -11,8 +11,13 @@ const gmail = require('../core/gmail');
 const { setMyProfile } = require('../core/detect');
 const { extractPdfText, profileFromText, mergeProfile, KNOWN_TOOLS } = require('../core/cvparse');
 const { Library, KINDS, LANGS } = require('../core/library');
+const { Environments } = require('../core/environments');
+const { countryOf } = require('../core/country');
+const { BR_TERMS } = require('../core/sources');
 const cfgmod = require('./config');
 
+let envs;
+let activeEnv = null;
 let win;
 let store;
 let library;
@@ -123,9 +128,54 @@ function prepare(id, lang, sel) {
   return { ...t, lang: l, to: job.email || '', sel: chosen, docs: library.list(), job: { kind: 'job', id: job.id, title: job.title, company: job.company, url: job.url } };
 }
 
+/* ---------- ambientes de procura: cada um com banco, config e documentos próprios ---------- */
+const envView = (e) => ({ id: e.id, name: e.name, terms: e.terms, preset: e.preset || '', lastOpened: e.lastOpened });
+
+/** Versão anterior guardava tudo na raiz de userData; vira o ambiente "ArchViz remoto" (move, não apaga). */
+function migrateLegacy(root) {
+  const old = path.join(root, 'jobhunter.sqlite');
+  if (envs.list().length || !fs.existsSync(old)) return;
+  const env = envs.create({ name: 'ArchViz remoto', terms: BR_TERMS, preset: 'archviz' });
+  const dest = envs.dirOf(env.id);
+  for (const f of ['jobhunter.sqlite', 'config.json', 'documentos']) {
+    const from = path.join(root, f);
+    if (fs.existsSync(from)) fs.renameSync(from, path.join(dest, f));
+  }
+}
+
+async function openEnv(id) {
+  const env = envs.get(String(id));
+  need(env, 'Ambiente não encontrado.');
+  const dir = envs.dirOf(env.id);
+  cfgFile = path.join(dir, 'config.json');
+  config = cfgmod.load(cfgFile);
+  setMyProfile(config.profile);
+  store = await Store.open(path.join(dir, 'jobhunter.sqlite'));
+  library = new Library(store, path.join(dir, 'documentos'));
+  studios = new Studios(store);
+  gmailClient = null;
+  migrateOldFiles();
+  if (env.preset === 'archviz') { seedIfNeeded(); seedStudios(); }
+  activeEnv = env;
+  envs.touch(env.id);
+  return envView(env);
+}
+
 function registerIpc() {
+  ipcMain.handle('env:state', () => ({ envs: envs.list().map(envView), active: activeEnv ? envView(activeEnv) : null }));
+  ipcMain.handle('env:create', async (_e, input) => {
+    const prevGoogle = activeEnv && config ? config.google : null;
+    const env = envs.create({ name: input && input.name, terms: input && input.terms });
+    // O Gmail é um só: o Client ID acompanha os ambientes novos para não precisar colar de novo.
+    if (prevGoogle && prevGoogle.clientId) cfgmod.save(path.join(envs.dirOf(env.id), 'config.json'), cfgmod.sanitize({ google: prevGoogle }));
+    return envView(env);
+  });
+  ipcMain.handle('env:open', (_e, id) => openEnv(id));
+  ipcMain.handle('env:home', () => { activeEnv = null; return true; });
+
   ipcMain.handle('jobs:list', (_e, q = {}) => ({
-    jobs: store.list({ status: STATUSES.includes(q.status) ? q.status : undefined, minFit: Number(q.minFit) || 1, region: q.region, text: String(q.text || '').slice(0, 100) }),
+    jobs: store.list({ status: STATUSES.includes(q.status) ? q.status : undefined, minFit: Number(q.minFit) || 1, region: q.region, text: String(q.text || '').slice(0, 100) })
+      .map((j) => ({ ...j, country: countryOf(j.location) })),
     counts: store.counts(),
   }));
   ipcMain.handle('jobs:status', (_e, id, status) => { store.setStatus(String(id), status); return store.counts(); });
@@ -137,7 +187,7 @@ function registerIpc() {
 
   ipcMain.handle('scan:run', async (_e, force) => {
     // As páginas de carreiras dos estúdios entram na busca junto com as configuradas à mão.
-    const scanConfig = { ...config, companies: mergeBoards(config.companies, studios.boards()) };
+    const scanConfig = { ...config, terms: activeEnv.preset === 'archviz' ? [] : activeEnv.terms, companies: mergeBoards(config.companies, studios.boards()) };
     const { jobs, report, lastFetch } = await runAll(scanConfig, { lastFetch: store.getSetting('lastFetch', {}), force: !!force });
     store.setSetting('lastFetch', lastFetch);
     return { added: store.upsertJobs(jobs), report };
@@ -271,16 +321,9 @@ if (!app.requestSingleInstanceLock()) {
 } else {
   app.whenReady().then(async () => {
     const dir = app.getPath('userData');
-    cfgFile = path.join(dir, 'config.json');
     secretsFile = path.join(dir, 'secrets.bin');
-    config = cfgmod.load(cfgFile);
-    setMyProfile(config.profile);
-    store = await Store.open(path.join(dir, 'jobhunter.sqlite'));
-    library = new Library(store, path.join(dir, 'documentos'));
-    studios = new Studios(store);
-    migrateOldFiles();
-    seedIfNeeded();
-    seedStudios();
+    envs = new Environments(dir);
+    migrateLegacy(dir);
     registerIpc();
     createWindow();
   });

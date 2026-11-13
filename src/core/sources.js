@@ -3,6 +3,7 @@ const { stripHtml, canonicalUrl, hashId, dedupeKey, toIso } = require('./text');
 const { parseRss } = require('./rss');
 const { detectRemote } = require('./detect');
 const { isCandidate } = require('./score');
+const { norm } = require('./text');
 
 const UA = 'JobHunter/0.2 (busca pessoal de vagas; github.com/coutocdouglas/JobHunter)';
 const MIN_INTERVAL_MS = 6 * 60 * 60 * 1000; // respeita as APIs gratuitas: no máximo 1 consulta a cada 6 h por fonte
@@ -163,8 +164,26 @@ async function getText(fetchImpl, url) {
   return res.text();
 }
 
+/** Termos definidos no ambiente (vazio = busca padrão de ArchViz). */
+const envTerms = (config) => (Array.isArray(config.terms) ? config.terms.filter(Boolean) : []);
+
+/**
+ * Filtro das vagas encontradas. Sem termos do ambiente, vale o filtro de ArchViz.
+ * Com termos, a vaga fica se o título tem todas as palavras de algum termo, ou se a descrição tem o termo inteiro.
+ */
+function candidateFilter(config) {
+  const terms = envTerms(config).map((t) => norm(t)).filter(Boolean);
+  if (!terms.length) return isCandidate;
+  return (job) => {
+    const title = norm(job.title);
+    const desc = norm(job.description || '');
+    return terms.some((t) => t.split(/\s+/).every((w) => title.includes(w)) || desc.includes(t));
+  };
+}
+
 function buildTasks(config, fetchImpl) {
   const c = config.companies || {};
+  const custom = envTerms(config);
   const tasks = [
     { key: 'weworkremotely', label: 'We Work Remotely', run: async () => normalizeWeWorkRemotely(parseRss(await getText(fetchImpl, 'https://weworkremotely.com/categories/remote-design-jobs.rss'))) },
     { key: 'remotive', label: 'Remotive', run: async () => normalizeRemotive(await getJson(fetchImpl, 'https://remotive.com/api/remote-jobs?category=design')) },
@@ -176,7 +195,7 @@ function buildTasks(config, fetchImpl) {
   for (const slug of c.workable || []) tasks.push({ key: `workable:${slug}`, label: `Workable ${slug}`, run: async () => normalizeWorkable(await getJson(fetchImpl, `https://apply.workable.com/api/v1/widget/accounts/${encodeURIComponent(slug)}?details=true`), slug) });
   if (config.gupy !== false) {
     // "3d" e "render" pegam títulos variados; o filtro de ArchViz descarta o que não serve.
-    for (const term of [...BR_TERMS, '3d', 'renderização']) {
+    for (const term of custom.length ? custom : [...BR_TERMS, '3d', 'renderização']) {
       tasks.push({
         key: `gupy:${term}`,
         label: `Gupy "${term}" (experimental)`,
@@ -187,7 +206,7 @@ function buildTasks(config, fetchImpl) {
   const a = config.adzuna || {};
   if (a.appId && a.appKey) {
     const country = a.country || 'br';
-    for (const what of country === 'br' ? BR_TERMS : ['architectural visualization', 'archviz artist', '3d visualizer']) {
+    for (const what of custom.length ? custom : country === 'br' ? BR_TERMS : ['architectural visualization', 'archviz artist', '3d visualizer']) {
       tasks.push({
         key: `adzuna:${what}`,
         label: `Adzuna "${what}"`,
@@ -204,6 +223,7 @@ function buildTasks(config, fetchImpl) {
  */
 async function runAll(config, { fetchImpl = fetch, lastFetch = {}, force = false, now = Date.now() } = {}) {
   const tasks = buildTasks(config, fetchImpl);
+  const keep = candidateFilter(config);
   const nextFetch = { ...lastFetch };
   const report = [];
   const jobs = [];
@@ -224,7 +244,7 @@ async function runAll(config, { fetchImpl = fetch, lastFetch = {}, force = false
       return;
     }
     nextFetch[t.key] = now;
-    const kept = r.value.list.filter(isCandidate).map(finalize).filter(Boolean);
+    const kept = r.value.list.filter(keep).map(finalize).filter(Boolean);
     jobs.push(...kept);
     report.push({ label: t.label, ok: true, found: r.value.list.length, kept: kept.length });
   });
@@ -232,7 +252,7 @@ async function runAll(config, { fetchImpl = fetch, lastFetch = {}, force = false
 }
 
 module.exports = {
-  runAll, buildTasks, finalize, MIN_INTERVAL_MS,
+  runAll, buildTasks, candidateFilter, finalize, MIN_INTERVAL_MS,
   normalizeWeWorkRemotely, normalizeRemotive, normalizeRemoteOk, normalizeGreenhouse,
   normalizeLever, normalizeAshby, normalizeWorkable, normalizeAdzuna, normalizeGupy, BR_TERMS,
 };

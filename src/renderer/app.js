@@ -29,12 +29,28 @@ function fmtDate(p) {
   return Number.isNaN(d.getTime()) || !/^\d{4}-\d{2}/.test(p) ? p : `Publicada em ${d.toLocaleDateString('pt-BR')}`;
 }
 
+/* Bandeiras pequenas e discretas, desenhadas em SVG (o Windows não mostra emoji de bandeira). */
+const svg = (body) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 16">${body}</svg>`)}`;
+const FLAGS = {
+  BR: svg('<rect width="24" height="16" fill="#1d9e50"/><path d="M12 2.5 21 8 12 13.5 3 8z" fill="#fac775"/><circle cx="12" cy="8" r="3.2" fill="#185fa5"/>'),
+  US: svg('<rect width="24" height="16" fill="#fff"/><path d="M0 0h24v2.3H0zM0 4.6h24v2.3H0zM0 9.2h24v2.3H0zM0 13.7h24V16H0z" fill="#d9413f"/><rect width="10" height="9.2" fill="#2a4d9b"/>'),
+  PT: svg('<rect width="24" height="16" fill="#d9413f"/><rect width="9.6" height="16" fill="#1d7a4a"/><circle cx="9.6" cy="8" r="2.6" fill="#fac775"/>'),
+  GB: svg('<rect width="24" height="16" fill="#2a4d9b"/><path d="M0 0l24 16M24 0 0 16" stroke="#fff" stroke-width="3"/><path d="M12 0v16M0 8h24" stroke="#fff" stroke-width="5"/><path d="M12 0v16M0 8h24" stroke="#d9413f" stroke-width="3"/>'),
+  DE: svg('<rect width="24" height="5.4" fill="#2c2c2a"/><rect y="5.3" width="24" height="5.4" fill="#d9413f"/><rect y="10.6" width="24" height="5.4" fill="#fac775"/>'),
+  CA: svg('<rect width="24" height="16" fill="#fff"/><rect width="6" height="16" fill="#d9413f"/><rect x="18" width="6" height="16" fill="#d9413f"/><circle cx="12" cy="8" r="2.6" fill="#d9413f"/>'),
+  ES: svg('<rect width="24" height="16" fill="#d9413f"/><rect y="4" width="24" height="8" fill="#fac775"/>'),
+};
+function flag(country) {
+  if (!country) return null;
+  return FLAGS[country.code] ? h('img', { class: 'flag', src: FLAGS[country.code], alt: country.name }) : h('span', { class: 'flag code' }, country.code);
+}
+
 function card(j) {
   const btn = (st, label) => h('button', { class: `${j.status === st ? 'on ' : ''}${st}`, onclick: () => act(j.id, j.status === st ? 'nova' : st) }, label);
   return h('article', { class: `card ${j.status}` },
     h('div', { class: 'row-top' }, h('div', {}, h('h3', { class: 'title' }, j.title), h('div', { class: 'co' }, j.company)), h('span', { class: 'fit' }, `Aderência ${j.fit}/5`)),
+    h('div', { class: 'loc' }, flag(j.country), h('b', {}, j.location || 'Local não informado'), j.country && h('span', { class: 'ctry' }, j.country.name)),
     h('div', { class: 'chips' },
-      h('span', { class: 'chip' }, j.location || 'Local não informado'),
       h('span', { class: 'chip' }, j.source),
       j.salary && h('span', { class: 'chip' }, j.salary),
       h('span', { class: 'chip' }, fmtDate(j.posted)),
@@ -351,16 +367,82 @@ async function save() {
 }
 
 /* ---------- navegação ---------- */
-document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', async () => {
-  document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === t));
-  for (const v of ['vagas', 'studios', 'docs', 'config']) $(`view-${v}`).hidden = t.dataset.view !== v;
+const VIEWS = ['home', 'vagas', 'studios', 'docs', 'config'];
+function showOnly(view) { for (const v of VIEWS) $(`view-${v}`).hidden = v !== view; }
+function setChrome(inEnv) { for (const id of ['env-bar', 'tabs', 'scan', 'alerts']) $(id).hidden = !inEnv; }
+
+async function goTab(name) {
+  document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x.dataset.view === name));
+  showOnly(name);
   try {
-    if (t.dataset.view === 'config') await renderConfig();
-    else if (t.dataset.view === 'studios') await renderStudios();
-    else if (t.dataset.view === 'docs') await renderDocs();
+    if (name === 'config') await renderConfig();
+    else if (name === 'studios') await renderStudios();
+    else if (name === 'docs') await renderDocs();
     else await refresh();
   } catch (e) { fail(e); }
-}));
+}
+document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => goTab(t.dataset.view)));
+
+/* ---------- ambientes de procura ---------- */
+let envs = [];
+let currentEnv = null;
+const homeMsg = (t) => { $('home-msg').textContent = t; $('home-msg').hidden = !t; };
+const homeFail = (e) => homeMsg(`Erro: ${String(e && e.message ? e.message : e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}`);
+
+function envTile(e) {
+  return h('button', { class: 'card tile', onclick: () => openEnvironment(e.id).catch(homeFail) },
+    h('h3', { class: 'title' }, e.name),
+    h('div', { class: 'chips' }, e.terms.slice(0, 6).map((t) => h('span', { class: 'chip' }, t)), e.terms.length > 6 && h('span', { class: 'chip' }, `+${e.terms.length - 6}`)),
+    h('div', { class: 'co' }, e.lastOpened ? `Aberto em ${new Date(e.lastOpened).toLocaleDateString('pt-BR')}` : 'Ainda não aberto'));
+}
+
+async function showHome() {
+  await window.jh.envHome();
+  currentEnv = null;
+  const st = await window.jh.envState();
+  envs = st.envs;
+  setChrome(false);
+  showOnly('home');
+  homeMsg('');
+  $('env-form').hidden = true;
+  $('home-grid').replaceChildren(
+    ...envs.map(envTile),
+    h('button', { class: 'card tile new', onclick: () => { $('env-form').hidden = false; $('env-name').focus(); } }, h('b', {}, '+ Novo ambiente'), h('span', { class: 'co' }, 'Escolha o tipo de vaga que quer buscar')));
+  if (!envs.length) homeMsg('Você ainda não tem nenhum ambiente. Crie o primeiro: diga que tipo de vaga procura e os nomes usados nos anúncios.');
+}
+
+/** Entra no ambiente (já aberto no processo principal) e mostra a aba de vagas. */
+async function enterEnv(env) {
+  currentEnv = env;
+  envs = (await window.jh.envState()).envs;
+  $('env-switch').replaceChildren(...envs.map((e) => h('option', { value: e.id }, e.name)));
+  $('env-switch').value = env.id;
+  // No ambiente original (ArchViz) a nota já é calibrada; nos novos, mostre tudo até a nota ser ajustada.
+  $('fit').value = env.preset === 'archviz' ? '3' : '1';
+  onboarded = null;
+  showMsg('');
+  setChrome(true);
+  await goTab('vagas');
+}
+async function openEnvironment(id) { await enterEnv(await window.jh.envOpen(id)); }
+
+$('env-home').addEventListener('click', () => showHome().catch(homeFail));
+$('env-switch').addEventListener('change', () => openEnvironment($('env-switch').value).catch(fail));
+$('env-cancel').addEventListener('click', () => { $('env-form').hidden = true; });
+$('env-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  try {
+    const e = await window.jh.envCreate({ name: $('env-name').value, terms: $('env-terms').value });
+    $('env-form').reset();
+    await openEnvironment(e.id);
+  } catch (e) { homeFail(e); }
+});
+
+async function init() {
+  const st = await window.jh.envState();
+  envs = st.envs;
+  if (st.active) await enterEnv(st.active); else await showHome();
+}
 $('save').addEventListener('click', () => save().catch(fail));
 $('scan').addEventListener('click', runScan);
 $('alerts').addEventListener('click', runAlerts);
@@ -368,4 +450,4 @@ for (const s of Object.keys(STATUS_LABEL)) $('st').append(h('option', { value: s
 ['q', 'reg', 'st', 'fit'].forEach((id) => $(id).addEventListener('input', () => refresh().catch(fail)));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('modal').hidden) closeModal(); });
 
-refresh().catch(fail);
+init().catch((e) => { setChrome(false); showOnly('home'); homeFail(e); });
